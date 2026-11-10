@@ -714,11 +714,53 @@
       toast('当前课没有可听写的词，试试数字 / 货币 / 时间');
       return;
     }
+    openDictPlay();
+  }
+  function openDictPlay() {
     $('dict-setup').hidden = true;
     $('dict-done').hidden = true;
     $('dict-play').hidden = false;
     $('dict-total').textContent = String(dict.list.length);
     showItem();
+  }
+  function startUnitDictation(u) {
+    dict.type = 'unit';
+    dict.list = [];
+    dict.idx = 0;
+    dict.correct = 0;
+    var words = shuffle(u.words.slice()).slice(0, 10);
+    words.forEach(function (w) {
+      dict.list.push({
+        speak: w.ms, answer: w.ms, hint: w.zh,
+        audioUrl: vocabAudio(u.lessonId, w.ms),
+        validate: function (inp) { return normLoose(inp) === normLoose(w.ms); }
+      });
+    });
+    if (!dict.list.length) { toast('这个场景没有可听写的词'); return; }
+    openDictPlay();
+  }
+  function renderDictCategories() {
+    var box = $('dict-categories');
+    if (!box || box.dataset.ready) return;
+    box.dataset.ready = '1';
+    var byWeek = {};
+    UNITS.forEach(function (u) { (byWeek[u.week] = byWeek[u.week] || []).push(u); });
+    Object.keys(byWeek).sort(function (a, b) { return Number(a) - Number(b); }).forEach(function (w) {
+      var h = document.createElement('div');
+      h.className = 'week-header';
+      h.innerHTML = '<span class="week-badge">第 ' + w + ' 周</span>';
+      box.appendChild(h);
+      var grid = document.createElement('div');
+      grid.className = 'dict-cats';
+      byWeek[w].forEach(function (u) {
+        var b = document.createElement('button');
+        b.className = 'dict-cat';
+        b.innerHTML = u.title + '<small>' + u.words.length + ' 词</small>';
+        b.addEventListener('click', function () { startUnitDictation(u); });
+        grid.appendChild(b);
+      });
+      box.appendChild(grid);
+    });
   }
   function showItem() {
     var it = dict.list[dict.idx];
@@ -1201,15 +1243,16 @@
       });
     });
 
-    $('dict-start').addEventListener('click', function () {
-      var active = document.querySelector('#dict-types .chip.active');
-      startDictation(active ? active.dataset.type : 'word');
+    document.querySelectorAll('.dict-cat.special').forEach(function (b) {
+      b.addEventListener('click', function () { startDictation(b.dataset.type); });
     });
-    document.querySelectorAll('#dict-types .chip').forEach(function (c) {
-      c.addEventListener('click', function () {
-        document.querySelectorAll('#dict-types .chip').forEach(function (x) { x.classList.remove('active'); });
-        c.classList.add('active');
-      });
+    $('dict-back').addEventListener('click', function () {
+      seqToken++;
+      try { seqAudio.pause(); } catch (e) {}
+      $('dict-play').hidden = true;
+      $('dict-done').hidden = true;
+      $('dict-setup').hidden = false;
+      $('dict-input').value = '';
     });
     $('dict-play-audio').addEventListener('click', function () {
       var it = dict.list[dict.idx];
@@ -1270,6 +1313,7 @@
   function init() {
     bind();
     initOnboarding();
+    renderDictCategories();
     window.addEventListener('beforeunload', save);
     if (window.Cloud) {
       Cloud.init(function () { updateAuthUI(); pullCloud(); });
