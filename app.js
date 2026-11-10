@@ -60,7 +60,7 @@
     return {
       profile: { onboarded: false, startWeek: 1, dailyMinutes: 15, name: '', avatar: '🙂' },
       progress: { unitIndex: 0, learnIdx: 0, today: { date: '', units: 0 } },
-      srs: {}, log: {}, settings: { rate: 0.9, voice: '' },
+      srs: {}, log: {}, settings: { rate: 0.9, voice: '', dictHint: false },
       updatedAt: 0
     };
   }
@@ -725,7 +725,7 @@
     $('dict-submit').disabled = false;
     $('dict-feedback').textContent = '';
     $('dict-feedback').className = 'dict-feedback';
-    $('dict-hint').textContent = it.hint ? ('提示：' + it.hint) : '';
+    $('dict-hint').textContent = (S.settings.dictHint && it.hint) ? ('提示：' + it.hint) : '';
     $('dict-input').focus();
     setTimeout(function () { playItem(it); }, 250);
   }
@@ -1199,7 +1199,12 @@
 
     $('dict-start').addEventListener('click', function () {
       var active = document.querySelector('#dict-types .chip.active');
-      startDictation(active ? active.dataset.type : 'number');
+      startDictation(active ? active.dataset.type : 'word');
+    });
+    $('dict-hint-toggle').checked = !!S.settings.dictHint;
+    $('dict-hint-toggle').addEventListener('change', function (e) {
+      S.settings.dictHint = e.target.checked;
+      save();
     });
     document.querySelectorAll('#dict-types .chip').forEach(function (c) {
       c.addEventListener('click', function () {
