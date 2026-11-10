@@ -40,7 +40,14 @@ window.COURSE = {
     "u05:kakak": "img/u05-kakak.jpg",
     "u05:adik": "img/u05-adik-lelaki.jpg",
     "u05:nenek": "img/u05-nenek.jpg",
-    "u05:datuk": "img/u05-datuk.jpg"
+    "u05:datuk": "img/u05-datuk.jpg",
+    "u02:ringgit": "img/u02-ringgit.jpg",
+    "u02:sen": "img/u02-sen.jpg",
+    "u02:orang": "img/u02-orang.jpg",
+    "u02:ekor": "img/u02-ekor.jpg",
+    "u02:buah": "img/u02-buah.jpg",
+    "u02:biji": "img/u02-biji.jpg",
+    "u02:batang": "img/u02-batang.jpg"
   },
   lessons: [
     {

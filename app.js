@@ -397,6 +397,28 @@
     if (DIGIT[w.ms]) return DIGIT[w.ms];
     return (w.ms.trim().charAt(0) || '?').toUpperCase();
   }
+  function slugify(s) {
+    return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  }
+  /* 先找课件图；没有就尝试 img/ai/<lessonId>-<slug>.jpg；再没有才回退到占位 */
+  function applyImage(imgEl, lessonId, ms, onNone) {
+    var base = COURSE.images && COURSE.images[lessonId + ':' + ms];
+    var ai = 'img/ai/' + lessonId + '-' + slugify(ms) + '.jpg';
+    imgEl.onerror = function () {
+      if (imgEl.dataset.next) {
+        var n = imgEl.dataset.next;
+        imgEl.dataset.next = '';
+        imgEl.src = n;
+        return;
+      }
+      imgEl.hidden = true;
+      imgEl.removeAttribute('src');
+      if (onNone) onNone();
+    };
+    imgEl.dataset.next = base ? ai : '';
+    imgEl.hidden = false;
+    imgEl.src = base || ai;
+  }
   function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
   function exampleFor(u, w) {
     var l = lessonOf(u.lessonId);
@@ -428,18 +450,14 @@
     $('learn-syl').textContent = w.syl;
     $('learn-zh').textContent = w.zh + ' · ' + w.pos;
 
-    var im = COURSE.images && COURSE.images[u.lessonId + ':' + w.ms];
     var imgEl = $('learn-img'), glyphEl = $('learn-glyph');
-    if (im) {
-      imgEl.src = im; imgEl.hidden = false;
-      glyphEl.hidden = true;
-      $('learn-visual-note').hidden = true;
-    } else {
-      imgEl.hidden = true; imgEl.removeAttribute('src');
+    glyphEl.hidden = true;
+    $('learn-visual-note').hidden = true;
+    applyImage(imgEl, u.lessonId, w.ms, function () {
       glyphEl.hidden = false;
       glyphEl.textContent = glyphFor(w);
       $('learn-visual-note').hidden = false;
-    }
+    });
 
     var ex = exampleFor(u, w);
     var exEl = $('learn-example');
@@ -513,10 +531,8 @@
     $('grade-row').classList.remove('show');
     $('fc-word').textContent = cur.ms;
 
-    var im = COURSE.images && COURSE.images[cur.lessonId + ':' + cur.ms];
     var imgEl = $('fc-img');
-    if (im) { imgEl.src = im; imgEl.hidden = false; }
-    else { imgEl.hidden = true; imgEl.removeAttribute('src'); }
+    applyImage(imgEl, cur.lessonId, cur.ms, function () {});
 
     var st = stageOf(S.srs[cur._key]);
     $('fc-badge').textContent = st === 0 ? '新词' : '第 ' + st + ' 次复习';
