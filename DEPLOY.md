@@ -62,10 +62,29 @@ create policy "update own" on public.progress
    Authentication → Email Templates → **Magic Link**，把模板改成：
 
 ```html
-<h2>登录验证码</h2>
-<p>你的验证码是：<strong>{{ .Token }}</strong></p>
-<p>也可以直接在浏览器打开：{{ .ConfirmationURL }}</p>
+<div style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#16211e;">
+  <h2 style="margin:0 0 4px;font-size:20px;">登录验证码 · Sign-in code</h2>
+  <p style="margin:0 0 20px;color:#6b7a75;font-size:14px;">马来语学习 · Malay Learning</p>
+
+  <p style="margin:0 0 6px;">你的验证码是：</p>
+  <p style="margin:0 0 4px;font-size:32px;font-weight:700;letter-spacing:8px;color:#0e7c66;">{{ .Token }}</p>
+  <p style="margin:0 0 20px;color:#6b7a75;font-size:12px;">Your verification code is shown above.</p>
+
+  <p style="margin:0 0 6px;">把上面 6 位数字填到网页输入框即可登录。</p>
+  <p style="margin:0 0 20px;color:#6b7a75;font-size:13px;">Enter the 6-digit code on the website to sign in.</p>
+
+  <p style="margin:0 0 6px;">也可以直接点链接登录：</p>
+  <p style="margin:0 0 20px;"><a href="{{ .ConfirmationURL }}" style="color:#0e7c66;">直接登录 · Sign in directly</a></p>
+
+  <hr style="border:none;border-top:1px solid #e2e8e3;margin:24px 0;">
+  <p style="margin:0;color:#6b7a75;font-size:12px;">
+    如果不是你本人操作，忽略这封邮件即可。<br>
+    If you didn't request this, you can safely ignore this email.
+  </p>
+</div>
 ```
+
+   标题建议：`马来语学习 · 登录验证码 / Your sign-in code`
 
    默认模板只有链接没有验证码。改完之后，登录框会出现「6 位验证码」输入框，在电脑上填手机收到的码即可，不需要把链接传来传去。
 
