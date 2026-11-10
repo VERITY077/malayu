@@ -214,6 +214,21 @@
     if (v) { u.voice = v; u.lang = v.lang; }
     window.speechSynthesis.speak(u);
   }
+  var audioPlayer = null;
+  function playAudio(url, fallbackText) {
+    if (!audioPlayer) audioPlayer = new Audio();
+    audioPlayer.pause();
+    audioPlayer.onerror = function () { speak(fallbackText); };
+    audioPlayer.src = url;
+    var p = audioPlayer.play();
+    if (p && p.catch) p.catch(function () { speak(fallbackText); });
+  }
+  function vocabAudio(lessonId, ms) {
+    return 'audio/vocab/' + lessonId + '-' + slugify(ms) + '.m4a';
+  }
+  function sentenceAudio(lessonId, idx) {
+    return 'audio/sent/' + lessonId + '-s' + (idx + 1) + '.m4a';
+  }
 
   /* ---------------- misc UI ---------------- */
   var toastTimer = null;
@@ -1098,7 +1113,9 @@
     });
     $('learn-audio').addEventListener('click', function () {
       var u = currentUnit();
-      if (u) speak(u.words[learnIdx].ms);
+      if (!u) return;
+      var w = u.words[learnIdx];
+      playAudio(vocabAudio(u.lessonId, w.ms), w.ms);
     });
 
     $('rate').addEventListener('input', function (e) {
@@ -1120,7 +1137,7 @@
     $('flashcard').addEventListener('click', flipCard);
     $('fc-audio').addEventListener('click', function (e) {
       e.stopPropagation();
-      if (cur) speak(cur.ms);
+      if (cur) playAudio(vocabAudio(cur.lessonId, cur.ms), cur.ms);
     });
     document.querySelectorAll('.grade').forEach(function (b) {
       b.addEventListener('click', function (e) {
@@ -1165,7 +1182,11 @@
 
     $('speak-play').addEventListener('click', function () {
       var s = speakList[speakIdx];
-      if (s) speak(s.ms);
+      if (!s) return;
+      var l = lessonOf(s.lessonId);
+      var i = l ? (l.sentences || []).indexOf(s) : -1;
+      if (i >= 0) playAudio(sentenceAudio(s.lessonId, i), s.ms);
+      else speak(s.ms);
     });
     $('speak-rec').addEventListener('click', toggleRecord);
     $('speak-eval').addEventListener('click', startEval);
