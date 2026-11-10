@@ -229,6 +229,53 @@
   function sentenceAudio(lessonId, idx) {
     return 'audio/sent/' + lessonId + '-s' + (idx + 1) + '.m4a';
   }
+  function numberToClips(n) {
+    n = Math.floor(n);
+    if (n === 0) return ['n0'];
+    if (n < 10) return ['n' + n];
+    if (n === 10) return ['n10'];
+    if (n === 11) return ['n11'];
+    if (n < 20) return ['n' + (n - 10), 'belas'];
+    if (n < 100) {
+      var t = Math.floor(n / 10), r = n % 10;
+      return ['t' + (t * 10)].concat(r ? ['n' + r] : []);
+    }
+    if (n < 200) { var r1 = n - 100; return ['seratus'].concat(r1 ? numberToClips(r1) : []); }
+    if (n < 1000) {
+      var h = Math.floor(n / 100), r2 = n % 100;
+      return ['n' + h, 'ratus'].concat(r2 ? numberToClips(r2) : []);
+    }
+    if (n < 2000) { var r3 = n - 1000; return ['seribu'].concat(r3 ? numberToClips(r3) : []); }
+    if (n < 1000000) {
+      var th = Math.floor(n / 1000), r4 = n % 1000;
+      return numberToClips(th).concat(['ribu']).concat(r4 ? numberToClips(r4) : []);
+    }
+    var m = Math.floor(n / 1000000), r5 = n % 1000000;
+    return (m === 1 ? ['sejuta'] : numberToClips(m).concat(['juta'])).concat(r5 ? numberToClips(r5) : []);
+  }
+  var seqAudio = null, seqToken = 0;
+  function playClips(clips, fallbackText) {
+    if (!clips || !clips.length) { speak(fallbackText); return; }
+    if (!seqAudio) seqAudio = new Audio();
+    var token = ++seqToken;
+    try { seqAudio.pause(); } catch (e) {}
+    var i = 0;
+    function next() {
+      if (token !== seqToken || i >= clips.length) return;
+      seqAudio.onerror = function () { if (token === seqToken) speak(fallbackText); };
+      seqAudio.onended = function () { i++; next(); };
+      seqAudio.src = 'audio/num/' + clips[i] + '.m4a';
+      var p = seqAudio.play();
+      if (p && p.catch) p.catch(function () { if (token === seqToken) speak(fallbackText); });
+    }
+    next();
+  }
+  function playItem(it) {
+    if (!it) return;
+    if (it.clips) playClips(it.clips, it.speak);
+    else if (it.audioUrl) playAudio(it.audioUrl, it.speak);
+    else speak(it.speak);
+  }
 
   /* ---------------- misc UI ---------------- */
   var toastTimer = null;
@@ -600,7 +647,7 @@
     if (type === 'number') {
       var n = Math.random() < 0.5 ? randInt(1, 99) : randInt(100, 9999);
       return {
-        speak: toMalay(n), answer: String(n),
+        speak: toMalay(n), answer: String(n), clips: numberToClips(n),
         validate: function (inp) {
           var x = inp.replace(/[^\d]/g, '');
           if (x) return Number(x) === n;
@@ -612,9 +659,11 @@
       var r = randInt(1, 200);
       var sen = [0, 5, 10, 20, 50][randInt(0, 4)];
       var ans = r + '.' + String(sen).padStart(2, '0');
+      var cclips = numberToClips(r).concat(['ringgit']);
+      if (sen) cclips = cclips.concat(numberToClips(sen)).concat(['sen']);
       return {
         speak: toMalay(r) + ' ringgit' + (sen ? ' ' + toMalay(sen) + ' sen' : ''),
-        answer: 'RM ' + ans,
+        answer: 'RM ' + ans, clips: cclips,
         validate: function (inp) {
           var x = inp.toLowerCase().replace(/rm/g, '').replace(/[^\d.]/g, '');
           var v = parseFloat(x);
@@ -628,6 +677,7 @@
       return {
         speak: 'pukul ' + toMalay(h) + (m ? ' ' + toMalay(m) : ''),
         answer: h + ':' + String(m).padStart(2, '0'),
+        clips: ['pukul'].concat(numberToClips(h)).concat(m ? numberToClips(m) : []),
         validate: function (inp) {
           var mm = inp.match(/(\d{1,2})\s*[:.．]\s*(\d{1,2})/);
           if (mm) return Number(mm[1]) === h && Number(mm[2]) === m;
@@ -642,7 +692,7 @@
     if (!pool.length) return null;
     var w = pool[randInt(0, pool.length - 1)];
     return {
-      speak: w.ms, answer: w.ms,
+      speak: w.ms, answer: w.ms, audioUrl: vocabAudio(l.id, w.ms),
       validate: function (inp) { return norm(inp) === norm(w.ms); }
     };
   }
@@ -676,7 +726,7 @@
     $('dict-feedback').textContent = '';
     $('dict-feedback').className = 'dict-feedback';
     $('dict-input').focus();
-    setTimeout(function () { speak(it.speak); }, 250);
+    setTimeout(function () { playItem(it); }, 250);
   }
   function submitDict() {
     var it = dict.list[dict.idx];
@@ -1158,7 +1208,7 @@
     });
     $('dict-play-audio').addEventListener('click', function () {
       var it = dict.list[dict.idx];
-      if (it) speak(it.speak);
+      if (it) playItem(it);
     });
     $('dict-submit').addEventListener('click', submitDict);
     $('dict-skip').addEventListener('click', function () {
