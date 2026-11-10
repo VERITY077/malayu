@@ -19,6 +19,10 @@
   function norm(s) {
     return (s || '').toLowerCase().replace(/[.,!?;:'"()\-–—]/g, ' ').replace(/\s+/g, ' ').trim();
   }
+  /* 用于听写判分：忽略空格、标点、大小写 */
+  function normLoose(s) {
+    return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
   function shuffle(a) {
     for (var i = a.length - 1; i > 0; i--) {
       var j = Math.floor(Math.random() * (i + 1));
@@ -647,11 +651,11 @@
     if (type === 'number') {
       var n = Math.random() < 0.5 ? randInt(1, 99) : randInt(100, 9999);
       return {
-        speak: toMalay(n), answer: String(n), clips: numberToClips(n),
+        speak: toMalay(n), answer: String(n), clips: numberToClips(n), label: '数字',
         validate: function (inp) {
           var x = inp.replace(/[^\d]/g, '');
           if (x) return Number(x) === n;
-          return norm(inp) === norm(toMalay(n));
+          return normLoose(inp) === normLoose(toMalay(n));
         }
       };
     }
@@ -663,7 +667,7 @@
       if (sen) cclips = cclips.concat(numberToClips(sen)).concat(['sen']);
       return {
         speak: toMalay(r) + ' ringgit' + (sen ? ' ' + toMalay(sen) + ' sen' : ''),
-        answer: 'RM ' + ans, clips: cclips,
+        answer: 'RM ' + ans, clips: cclips, label: '货币',
         validate: function (inp) {
           var x = inp.toLowerCase().replace(/rm/g, '').replace(/[^\d.]/g, '');
           var v = parseFloat(x);
@@ -676,7 +680,7 @@
       var h = randInt(1, 12), m = [0, 15, 30, 45][randInt(0, 3)];
       return {
         speak: 'pukul ' + toMalay(h) + (m ? ' ' + toMalay(m) : ''),
-        answer: h + ':' + String(m).padStart(2, '0'),
+        answer: h + ':' + String(m).padStart(2, '0'), label: '时间',
         clips: ['pukul'].concat(numberToClips(h)).concat(m ? numberToClips(m) : []),
         validate: function (inp) {
           var mm = inp.match(/(\d{1,2})\s*[:.．]\s*(\d{1,2})/);
@@ -693,7 +697,7 @@
     var w = pool[randInt(0, pool.length - 1)];
     return {
       speak: w.ms, answer: w.ms, audioUrl: vocabAudio(l.id, w.ms), hint: w.zh,
-      validate: function (inp) { return norm(inp) === norm(w.ms); }
+      validate: function (inp) { return normLoose(inp) === normLoose(w.ms); }
     };
   }
 
@@ -725,7 +729,7 @@
     $('dict-submit').disabled = false;
     $('dict-feedback').textContent = '';
     $('dict-feedback').className = 'dict-feedback';
-    $('dict-hint').textContent = (S.settings.dictHint && it.hint) ? ('提示：' + it.hint) : '';
+    $('dict-hint').textContent = it.hint ? ('提示：' + it.hint) : (it.label || '');
     $('dict-input').focus();
     setTimeout(function () { playItem(it); }, 250);
   }
@@ -1201,11 +1205,6 @@
       var active = document.querySelector('#dict-types .chip.active');
       startDictation(active ? active.dataset.type : 'word');
     });
-    $('dict-hint-toggle').checked = !!S.settings.dictHint;
-    $('dict-hint-toggle').addEventListener('change', function (e) {
-      S.settings.dictHint = e.target.checked;
-      save();
-    });
     document.querySelectorAll('#dict-types .chip').forEach(function (c) {
       c.addEventListener('click', function () {
         document.querySelectorAll('#dict-types .chip').forEach(function (x) { x.classList.remove('active'); });
@@ -1219,10 +1218,19 @@
     $('dict-submit').addEventListener('click', submitDict);
     $('dict-skip').addEventListener('click', function () {
       if (dict.locked) return;
+      var it = dict.list[dict.idx];
+      if (!it) return;
       dict.locked = true;
-      dict.idx++;
-      if (dict.idx >= dict.list.length) finishDict();
-      else showItem();
+      var fb = $('dict-feedback');
+      fb.textContent = '答案：' + it.answer + '（' + it.speak + '）';
+      fb.className = 'dict-feedback bad';
+      $('dict-input').disabled = true;
+      $('dict-submit').disabled = true;
+      setTimeout(function () {
+        dict.idx++;
+        if (dict.idx >= dict.list.length) finishDict();
+        else showItem();
+      }, 1900);
     });
     $('dict-input').addEventListener('keydown', function (e) {
       if (e.key === 'Enter') submitDict();
