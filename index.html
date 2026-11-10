@@ -269,6 +269,22 @@
   </div>
 </div>
 
+<div class="mic-modal" id="mic-modal" hidden>
+  <div class="mic-card">
+    <h2>录音授权</h2>
+    <p class="muted">录音只保存在本机浏览器，不会上传。发音评测会把音频交给浏览器的语音识别服务处理。</p>
+    <label class="consent-row">
+      <input type="checkbox" id="mic-consent">
+      <span>我同意使用麦克风录音</span>
+    </label>
+    <div class="row mt">
+      <button class="btn ghost" id="mic-cancel">取消</button>
+      <button class="btn primary" id="mic-allow" disabled>允许并开始</button>
+    </div>
+    <p class="mic-msg" id="mic-msg"></p>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <div class="auth-modal" id="auth-modal" hidden>

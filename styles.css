@@ -376,3 +376,15 @@ audio{width:100%;margin-top:14px}
 .dict-cat small{font-size:11px;color:var(--muted);font-weight:500}
 .dict-cat.special{background:#fbfcfb}
 .dict-cats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0 16px}
+
+/* ---------- mic consent ---------- */
+.mic-modal{
+  position:fixed;inset:0;z-index:115;background:rgba(22,33,30,.55);
+  backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.mic-modal[hidden]{display:none}
+.mic-card{background:#fff;border-radius:22px;padding:24px 22px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.22)}
+.mic-card h2{margin:0 0 8px;font-size:22px}
+.consent-row{display:flex;align-items:flex-start;gap:10px;margin-top:18px;font-size:15px;cursor:pointer}
+.consent-row input{width:20px;height:20px;margin-top:1px;accent-color:var(--accent)}
+.mic-msg{font-size:13px;color:var(--muted);min-height:18px;margin-top:12px}

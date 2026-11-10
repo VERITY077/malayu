@@ -61,7 +61,7 @@
     return {
       profile: { onboarded: false, startWeek: 1, name: '', avatar: '🙂' },
       progress: { unitIndex: 0, learnIdx: 0 },
-      srs: {}, log: {}, settings: { rate: 0.9, voice: '' },
+      srs: {}, log: {}, settings: { rate: 0.9, voice: '', micConsent: false },
       updatedAt: 0
     };
   }
@@ -937,6 +937,35 @@
 
   /* ---------------- speak ---------------- */
   var speakList = [], speakIdx = 0, recorder = null, chunks = [];
+  var pendingMic = null;
+  function askMic(action) {
+    pendingMic = action;
+    $('mic-consent').checked = false;
+    $('mic-allow').disabled = true;
+    $('mic-msg').textContent = '';
+    $('mic-modal').hidden = false;
+  }
+  function runPendingMic() {
+    var a = pendingMic;
+    pendingMic = null;
+    if (a === 'record') toggleRecord();
+    else if (a === 'eval') startEval();
+  }
+  function confirmMic() {
+    S.settings.micConsent = true;
+    save();
+    $('mic-modal').hidden = true;
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        runPendingMic();
+      }).catch(function () {
+        $('speak-tip').textContent = '麦克风未授权：请在浏览器和系统设置里允许后重试。';
+      });
+    } else {
+      runPendingMic();
+    }
+  }
 
   function renderSpeak() {
     if (speakIdx >= speakList.length) speakIdx = 0;
@@ -959,6 +988,7 @@
   function toggleRecord() {
     var btn = $('speak-rec');
     if (recorder && recorder.state === 'recording') { recorder.stop(); return; }
+    if (!S.settings.micConsent) { askMic('record'); return; }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       $('speak-tip').textContent = '当前环境不支持录音。用本地服务器打开（python3 -m http.server）可启用。';
       return;
@@ -1040,6 +1070,7 @@
   function startEval() {
     if (!SR) { toast('当前浏览器不支持语音识别，请用 Chrome'); return; }
     if (evalBusy) return;
+    if (!S.settings.micConsent) { askMic('eval'); return; }
     var s = speakList[speakIdx];
     if (!s) return;
     evalBusy = true;
@@ -1318,6 +1349,14 @@
     });
     $('speak-rec').addEventListener('click', toggleRecord);
     $('speak-eval').addEventListener('click', startEval);
+    $('mic-consent').addEventListener('change', function (e) {
+      $('mic-allow').disabled = !e.target.checked;
+    });
+    $('mic-allow').addEventListener('click', confirmMic);
+    $('mic-cancel').addEventListener('click', function () { $('mic-modal').hidden = true; pendingMic = null; });
+    $('mic-modal').addEventListener('click', function (e) {
+      if (e.target === $('mic-modal')) { $('mic-modal').hidden = true; pendingMic = null; }
+    });
     $('speak-prev').addEventListener('click', function () {
       if (!speakList.length) return;
       speakIdx = (speakIdx - 1 + speakList.length) % speakList.length;
