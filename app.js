@@ -692,7 +692,7 @@
     if (!pool.length) return null;
     var w = pool[randInt(0, pool.length - 1)];
     return {
-      speak: w.ms, answer: w.ms, audioUrl: vocabAudio(l.id, w.ms),
+      speak: w.ms, answer: w.ms, audioUrl: vocabAudio(l.id, w.ms), hint: w.zh,
       validate: function (inp) { return norm(inp) === norm(w.ms); }
     };
   }
@@ -725,6 +725,7 @@
     $('dict-submit').disabled = false;
     $('dict-feedback').textContent = '';
     $('dict-feedback').className = 'dict-feedback';
+    $('dict-hint').textContent = it.hint ? ('提示：' + it.hint) : '';
     $('dict-input').focus();
     setTimeout(function () { playItem(it); }, 250);
   }

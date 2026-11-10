@@ -364,3 +364,4 @@ audio{width:100%;margin-top:14px}
 }
 .avatar-opt.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);background:var(--accent-soft)}
 .auth-btn.has-avatar{font-size:15px;padding:0 8px}
+.dict-hint{font-size:14px;color:var(--muted);margin-bottom:10px;min-height:20px}
