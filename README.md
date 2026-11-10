@@ -37,13 +37,24 @@ python3 -m http.server 8080
 
 > 进度存在浏览器本地，按网址隔离。`file://`、`localhost`、局域网 IP 是三份互不相通的存档，建议固定用一个地址。
 
-## 云端登录（可选）
+## 怎么用（普通用户）
 
-默认是本机模式。要开启账号与跨设备同步：
+1. 打开 <https://verity077.github.io/malayu/>
+2. 直接开始学；不想登录也能用，进度存在本机
+3. 想跨设备同步，点右上角「登录」→ 填邮箱 → 收邮件 → 填 6 位验证码
+
+**普通用户不需要了解 Supabase，也不需要做任何配置。**
+
+## 部署者说明：开启云端登录
+
+> 这一节只给仓库维护者看。已经配好了，普通用户可以忽略。
+
+默认配置下已经是云端模式。如果要在自己的 fork 里重新开启：
 
 1. 建 Supabase 项目，执行建表 SQL
 2. 在 `config.js` 填入 Project URL 与 anon key
 3. 在 Supabase 的 URL Configuration 里填写本站地址
+4. 在 Email Templates → Magic Link 里加入 `{{ .Token }}`，否则邮件里没有 6 位验证码
 
 建表 SQL 与完整步骤见 [DEPLOY.md](DEPLOY.md)。
 
