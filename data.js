@@ -400,7 +400,16 @@ window.COURSE = {
         { title: "饮料", words: ["teh", "kopi", "susu", "air kosong", "jus"] },
         { title: "用餐地点", words: ["restoran", "gerai", "kopitiam", "tapau"] }
       ],
-      sentences: [],
+      sentences: [
+        { ms: "Makanan kesukaan saya ialah nasi lemak.", zh: "我最喜欢的食物是椰浆饭。", page: 24,
+          note: "句型来自课件 p.24 的「Makanan kesukaan saya ialah ___」；例句为原创。" },
+        { ms: "Saya suka makan nasi goreng.", zh: "我喜欢吃炒饭。", page: 24,
+          note: "课件 p.24 句型「Saya suka makan ___」；例句为原创。" },
+        { ms: "Saya suka minum teh tarik.", zh: "我喜欢喝拉茶。", page: 24,
+          note: "课件 p.24 句型「Saya suka minum ___」；例句为原创。" },
+        { ms: "Nasi lemak itu pedas.", zh: "那份椰浆饭很辣。", page: 6,
+          note: "形容词谓语句，味道词见 p.6；例句为原创。" }
+      ],
       dictation: { numbers: false, currency: false, time: false }
     },
     {
