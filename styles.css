@@ -70,7 +70,6 @@ main{max-width:720px;margin:0 auto;padding:16px 16px 8px}
 .hero{background:linear-gradient(145deg,#0e7c66,#0a5f4e);color:#fff;border:none;padding:22px}
 .hero-label{font-size:13px;opacity:.8;letter-spacing:2px}
 .hero-title{font-size:30px;font-weight:750;line-height:1.2;margin:8px 0 6px;letter-spacing:-.02em}
-.hero-num{font-size:56px;font-weight:750;line-height:1;margin:6px 0 2px;font-variant-numeric:tabular-nums}
 .hero-sub{opacity:.85;font-size:14px}
 .hero-actions{display:flex;gap:10px;margin-top:18px}
 .hero .btn.primary{background:#fff;color:var(--accent)}
@@ -246,7 +245,6 @@ audio{width:100%;margin-top:14px}
 
 @media (max-width:380px){
   .fc-word{font-size:32px}
-  .hero-num{font-size:46px}
   .tab{font-size:10px}
 }
 
@@ -365,8 +363,6 @@ audio{width:100%;margin-top:14px}
 .avatar-opt.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);background:var(--accent-soft)}
 .auth-btn.has-avatar{font-size:15px;padding:0 8px}
 .dict-hint{font-size:14px;color:var(--muted);margin-bottom:10px;min-height:20px}
-.switch-row{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:14px;color:var(--muted);cursor:pointer}
-.switch-row input{width:18px;height:18px;accent-color:var(--accent)}
 
 /* ---------- dictation categories ---------- */
 .dict-special{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px}

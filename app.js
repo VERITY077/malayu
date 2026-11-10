@@ -16,9 +16,6 @@
     d.setDate(d.getDate() + n);
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
-  function norm(s) {
-    return (s || '').toLowerCase().replace(/[.,!?;:'"()\-–—]/g, ' ').replace(/\s+/g, ' ').trim();
-  }
   /* 用于听写判分：忽略空格、标点、大小写 */
   function normLoose(s) {
     return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -62,9 +59,9 @@
   /* ---------------- state ---------------- */
   function defaultState() {
     return {
-      profile: { onboarded: false, startWeek: 1, dailyMinutes: 15, name: '', avatar: '🙂' },
-      progress: { unitIndex: 0, learnIdx: 0, today: { date: '', units: 0 } },
-      srs: {}, log: {}, settings: { rate: 0.9, voice: '', dictHint: false },
+      profile: { onboarded: false, startWeek: 1, name: '', avatar: '🙂' },
+      progress: { unitIndex: 0, learnIdx: 0 },
+      srs: {}, log: {}, settings: { rate: 0.9, voice: '' },
       updatedAt: 0
     };
   }
@@ -106,7 +103,9 @@
       Cloud.pushState(S).catch(function () {});
     }, 800);
   }
+  var resetting = false;
   function save() {
+    if (resetting) return;
     S.updatedAt = Date.now();
     persist();
     queueCloud();
@@ -150,6 +149,22 @@
     return out;
   }
   function sentencesOfLesson(l) { return l ? (l.sentences || []) : []; }
+  /* 当前课没有例句时，借最近一周的例句来练，并标注来源 */
+  function withLesson(list, l) {
+    return (list || []).map(function (s, i) {
+      return Object.assign({}, s, { lessonId: l.id, index: i });
+    });
+  }
+  function sentenceContext() {
+    var l = currentLesson();
+    var list = sentencesOfLesson(l);
+    if (list.length) return { list: withLesson(list, l), lesson: l, fallback: false };
+    var w = l ? l.week : 0;
+    var cands = COURSE.lessons.filter(function (x) { return (x.sentences || []).length; });
+    cands.sort(function (a, b) { return Math.abs(a.week - w) - Math.abs(b.week - w); });
+    if (!cands.length) return { list: [], lesson: l, fallback: false };
+    return { list: withLesson(cands[0].sentences, cands[0]), lesson: cands[0], fallback: true };
+  }
   function totalWords() { return UNITS.reduce(function (n, u) { return n + u.words.length; }, 0); }
   function learnedWords() {
     var n = 0;
@@ -311,7 +326,15 @@
     if (name === 'learn') renderLearn();
     if (name === 'vocab') { buildQueue(); nextCard(); }
     if (name === 'sentence') newSentence();
-    if (name === 'speak') { speakIdx = 0; speakList = sentencesOfLesson(currentLesson()); renderSpeak(); }
+    if (name === 'speak') {
+      var ctx = sentenceContext();
+      speakIdx = 0;
+      speakList = ctx.list;
+      renderSpeak();
+      $('speak-tip').textContent = ctx.fallback
+        ? '本课暂无例句，改练 ' + ctx.lesson.code + ' 的句子'
+        : '';
+    }
   }
 
   /* ---------------- onboarding ---------------- */
@@ -468,22 +491,22 @@
   }
   /* 先找课件图；没有就尝试 img/ai/<lessonId>-<slug>.jpg；再没有才回退到占位 */
   function applyImage(imgEl, lessonId, ms, onNone) {
-    var base = COURSE.images && COURSE.images[lessonId + ':' + ms];
-    var ai = 'img/ai/' + lessonId + '-' + slugify(ms) + '.jpg';
+    var key = lessonId + ':' + ms;
+    var src = (COURSE.images && COURSE.images[key]) ||
+              (window.AI_IMAGES && window.AI_IMAGES[key]) || '';
+    if (!src) {
+      imgEl.hidden = true;
+      imgEl.removeAttribute('src');
+      if (onNone) onNone();
+      return;
+    }
     imgEl.onerror = function () {
-      if (imgEl.dataset.next) {
-        var n = imgEl.dataset.next;
-        imgEl.dataset.next = '';
-        imgEl.src = n;
-        return;
-      }
       imgEl.hidden = true;
       imgEl.removeAttribute('src');
       if (onNone) onNone();
     };
-    imgEl.dataset.next = base ? ai : '';
     imgEl.hidden = false;
-    imgEl.src = base || ai;
+    imgEl.src = src;
   }
   function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
   function exampleFor(u, w) {
@@ -548,12 +571,12 @@
     if (!u) return;
     u.words.forEach(function (v) {
       var k = u.lessonId + '::' + v.ms;
-      if (!S.srs[k]) S.srs[k] = { stage: 1, due: addDays(todayStr(), 1) };
+      if (!S.srs[k]) S.srs[k] = { stage: 0, due: todayStr() };
     });
     S.progress.unitIndex++;
     S.progress.learnIdx = 0;
     save();
-    toast('「' + u.title + '」完成，明天进入复习');
+    toast('「' + u.title + '」完成，已加入今日复习');
     show('home');
   }
 
@@ -645,7 +668,7 @@
   }
 
   /* ---------------- dictation ---------------- */
-  var dict = { list: [], idx: 0, type: 'number', correct: 0, locked: false };
+  var dict = { list: [], idx: 0, correct: 0, locked: false };
 
   function makeItem(type) {
     if (type === 'number') {
@@ -702,7 +725,6 @@
   }
 
   function startDictation(type) {
-    dict.type = type;
     dict.list = [];
     dict.idx = 0;
     dict.correct = 0;
@@ -724,7 +746,6 @@
     showItem();
   }
   function startUnitDictation(u) {
-    dict.type = 'unit';
     dict.list = [];
     dict.idx = 0;
     dict.correct = 0;
@@ -844,8 +865,9 @@
   }
 
   function newSentence() {
-    var l = currentLesson();
-    var pool = sentencesOfLesson(l);
+    var ctx = sentenceContext();
+    var l = ctx.lesson;
+    var pool = ctx.list;
     if (!pool.length) {
       sent.answer = []; sent.picked = [];
       sent.current = null; sent.lesson = l;
@@ -863,7 +885,8 @@
     sent.current = s;
     sent.lesson = l;
     $('sent-zh').textContent = s.zh;
-    $('sent-src').textContent = '[出处：' + l.file + ' p.' + s.page + ']';
+    $('sent-src').textContent = (ctx.fallback ? '本课暂无例句，改练 ' + l.code + ' 的句子 · ' : '') +
+      '[出处：' + l.file + ' p.' + s.page + ']';
     $('sent-feedback').textContent = '';
     $('sent-feedback').className = 'dict-feedback';
     renderAnalysis(null, l);
@@ -1227,6 +1250,7 @@
     $('btn-test-voice').addEventListener('click', function () { speak('Selamat pagi. Nama saya Ali.'); });
     $('btn-reset').addEventListener('click', function () {
       if (!confirm('清空所有学习记录并重新开始？')) return;
+      resetting = true;
       try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LEGACY_KEY); } catch (e) {}
       location.reload();
     });
@@ -1290,10 +1314,7 @@
     $('speak-play').addEventListener('click', function () {
       var s = speakList[speakIdx];
       if (!s) return;
-      var l = lessonOf(s.lessonId);
-      var i = l ? (l.sentences || []).indexOf(s) : -1;
-      if (i >= 0) playAudio(sentenceAudio(s.lessonId, i), s.ms);
-      else speak(s.ms);
+      playAudio(sentenceAudio(s.lessonId, s.index || 0), s.ms);
     });
     $('speak-rec').addEventListener('click', toggleRecord);
     $('speak-eval').addEventListener('click', startEval);
