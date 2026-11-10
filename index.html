@@ -267,11 +267,17 @@
 <div class="auth-modal" id="auth-modal" hidden>
   <div class="auth-card">
     <h2>登录同步</h2>
-    <p class="muted" id="auth-sub">用邮箱接收登录链接，学习进度会同步到云端，换设备也能接着学。</p>
+    <p class="muted" id="auth-sub">用邮箱接收登录码，学习进度会同步到云端。手机收邮件、电脑登录也没问题。</p>
 
     <div id="auth-form">
       <input class="input" id="auth-email" type="email" placeholder="you@example.com" autocomplete="email">
-      <button class="btn primary mt" id="auth-send">发送登录链接</button>
+      <button class="btn primary mt" id="auth-send">发送登录码</button>
+    </div>
+
+    <div id="auth-code-box" hidden>
+      <p class="muted small">邮件里有一个 6 位验证码。填在下面，就能在这台电脑上登录。</p>
+      <input class="input" id="auth-code" inputmode="numeric" maxlength="6" placeholder="6 位验证码" autocomplete="one-time-code">
+      <button class="btn primary mt" id="auth-verify">验证并登录</button>
     </div>
 
     <div id="auth-user" hidden>

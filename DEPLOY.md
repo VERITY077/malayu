@@ -57,6 +57,18 @@ create policy "update own" on public.progress
 4. Authentication → Providers → Email：保持开启。
    默认邮件服务有频率限制（每小时几封），正式上线建议在 Settings → Auth → SMTP 配自己的邮箱服务。
 
+5. **让邮件包含 6 位验证码**（手机收信、电脑登录必需）：
+
+   Authentication → Email Templates → **Magic Link**，把模板改成：
+
+```html
+<h2>登录验证码</h2>
+<p>你的验证码是：<strong>{{ .Token }}</strong></p>
+<p>也可以直接在浏览器打开：{{ .ConfirmationURL }}</p>
+```
+
+   默认模板只有链接没有验证码。改完之后，登录框会出现「6 位验证码」输入框，在电脑上填手机收到的码即可，不需要把链接传来传去。
+
 ---
 
 ## 三、填入配置

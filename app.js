@@ -933,12 +933,14 @@
     btn.textContent = u ? ((u.email || '我').charAt(0).toUpperCase()) : '登录';
     $('auth-form').hidden = !!u;
     $('auth-user').hidden = !u;
-    if (u) $('auth-email-show').textContent = u.email || '';
+    if (u) { $('auth-code-box').hidden = true; $('auth-email-show').textContent = u.email || ''; }
   }
   function openAuth() {
     if (!window.Cloud || !Cloud.configured()) { toast('未配置云端，当前为本机模式'); return; }
     $('auth-modal').hidden = false;
     $('auth-msg').textContent = '';
+    $('auth-code-box').hidden = true;
+    $('auth-code').value = '';
     updateAuthUI();
     setTimeout(function () {
       var e = $('auth-email');
@@ -952,9 +954,25 @@
     $('auth-msg').textContent = '正在发送…';
     Cloud.signIn(email).then(function (res) {
       if (res && res.error) { $('auth-msg').textContent = '发送失败：' + res.error.message; return; }
-      $('auth-msg').textContent = '登录链接已发送，请到邮箱点击链接，再回到本页。';
+      $('auth-msg').textContent = '验证码已发送。邮件在手机上也没关系，把 6 位数字填到下面。';
+      $('auth-code-box').hidden = false;
+      $('auth-code').focus();
     }).catch(function (err) {
       $('auth-msg').textContent = '发送失败：' + (err.message || err);
+    });
+  }
+  function verifyCode() {
+    var email = ($('auth-email').value || '').trim();
+    var code = ($('auth-code').value || '').replace(/\D/g, '');
+    if (!email) { $('auth-msg').textContent = '请先填邮箱'; return; }
+    if (code.length !== 6) { $('auth-msg').textContent = '请输入 6 位数字验证码'; return; }
+    $('auth-msg').textContent = '正在验证…';
+    Cloud.verifyOtp(email, code).then(function (res) {
+      if (res && res.error) { $('auth-msg').textContent = '验证失败：' + res.error.message; return; }
+      $('auth-msg').textContent = '登录成功';
+      setTimeout(function () { closeAuth(); toast('登录成功，开始同步进度'); }, 400);
+    }).catch(function (err) {
+      $('auth-msg').textContent = '验证失败：' + (err.message || err);
     });
   }
   function logout() {
@@ -1000,6 +1018,8 @@
     $('btn-auth').addEventListener('click', openAuth);
     $('auth-close').addEventListener('click', closeAuth);
     $('auth-send').addEventListener('click', sendLogin);
+    $('auth-verify').addEventListener('click', verifyCode);
+    $('auth-code').addEventListener('keydown', function (e) { if (e.key === 'Enter') verifyCode(); });
     $('auth-logout').addEventListener('click', logout);
     $('auth-email').addEventListener('keydown', function (e) { if (e.key === 'Enter') sendLogin(); });
     $('auth-modal').addEventListener('click', function (e) { if (e.target === $('auth-modal')) closeAuth(); });

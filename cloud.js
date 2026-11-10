@@ -59,6 +59,10 @@ window.Cloud = (function () {
       options: { emailRedirectTo: location.origin + location.pathname }
     });
   }
+  function verifyOtp(email, token) {
+    if (!client) return Promise.reject(new Error('未配置云端'));
+    return client.auth.verifyOtp({ email: email, token: token, type: 'email' });
+  }
   function signOut() {
     if (!client) return Promise.resolve();
     return client.auth.signOut();
@@ -89,6 +93,7 @@ window.Cloud = (function () {
     currentUser: currentUser,
     isLoaded: isLoaded,
     signIn: signIn,
+    verifyOtp: verifyOtp,
     signOut: signOut,
     fetchState: fetchState,
     pushState: pushState
