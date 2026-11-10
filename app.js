@@ -936,7 +936,7 @@
   }
 
   /* ---------------- speak ---------------- */
-  var speakList = [], speakIdx = 0, recorder = null, chunks = [];
+  var speakList = [], speakIdx = 0;
   var pendingMic = null;
   function askMic(action) {
     pendingMic = action;
@@ -948,8 +948,7 @@
   function runPendingMic() {
     var a = pendingMic;
     pendingMic = null;
-    if (a === 'record') toggleRecord();
-    else if (a === 'eval') startEval();
+    if (a === 'eval') startEval();
   }
   function confirmMic() {
     S.settings.micConsent = true;
@@ -974,47 +973,15 @@
       $('speak-ms').textContent = '本课暂无例句';
       $('speak-zh').textContent = l ? l.code : '';
       $('speak-src').textContent = '';
-      $('speak-audio').hidden = true;
-      return;
+        return;
     }
     var s = speakList[speakIdx];
     $('speak-ms').textContent = s.ms;
     $('speak-zh').textContent = s.zh;
     $('speak-src').textContent = '[出处：' + lessonOf(s.lessonId).file + ' p.' + s.page + ']';
-    $('speak-audio').hidden = true;
     $('eval-panel').hidden = true;
     $('speak-tip').textContent = '';
   }
-  function toggleRecord() {
-    var btn = $('speak-rec');
-    if (recorder && recorder.state === 'recording') { recorder.stop(); return; }
-    if (!S.settings.micConsent) { askMic('record'); return; }
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      $('speak-tip').textContent = '当前环境不支持录音。用本地服务器打开（python3 -m http.server）可启用。';
-      return;
-    }
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
-      chunks = [];
-      recorder = new MediaRecorder(stream);
-      recorder.ondataavailable = function (e) { if (e.data.size) chunks.push(e.data); };
-      recorder.onstop = function () {
-        var blob = new Blob(chunks, { type: 'audio/webm' });
-        var audio = $('speak-audio');
-        audio.src = URL.createObjectURL(blob);
-        audio.hidden = false;
-        stream.getTracks().forEach(function (t) { t.stop(); });
-        btn.textContent = '● 录音';
-        btn.classList.add('primary');
-      };
-      recorder.start();
-      btn.textContent = '■ 停止';
-      btn.classList.remove('primary');
-      $('speak-tip').textContent = '正在录音……说完点「停止」。';
-    }).catch(function () {
-      $('speak-tip').textContent = '麦克风不可用：点地址栏最左侧的网站图标 → 网站设置 → 麦克风 → 允许；再到 macOS 系统设置 → 隐私与安全性 → 麦克风，勾选 Chrome，然后刷新。';
-    });
-  }
-
   /* ---------------- 发音评测（浏览器语音识别） ---------------- */
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   var evalBusy = false;
@@ -1031,40 +998,84 @@
     });
     return out;
   }
-  function lcsMatch(a, b) {
+  function lev(a, b) {
     var n = a.length, m = b.length, i, j;
-    var dp = [];
-    for (i = 0; i <= n; i++) { dp.push(new Array(m + 1).fill(0)); }
+    var d = [];
+    for (i = 0; i <= n; i++) d.push([i]);
+    for (j = 0; j <= m; j++) d[0][j] = j;
     for (i = 1; i <= n; i++) {
       for (j = 1; j <= m; j++) {
-        dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1]);
+        d[i][j] = Math.min(
+          d[i - 1][j] + 1,
+          d[i][j - 1] + 1,
+          d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+        );
       }
     }
-    var matched = {};
+    return d[n][m];
+  }
+  function charSim(a, b) {
+    if (a === b) return 1;
+    var max = Math.max(a.length, b.length);
+    return max ? Math.max(0, 1 - lev(a, b) / max) : 0;
+  }
+  /* 逐词对齐：读错一个音也能拿到部分分 */
+  function alignTokens(a, b) {
+    var n = a.length, m = b.length, i, j;
+    var dp = [], from = [];
+    for (i = 0; i <= n; i++) { dp.push(new Array(m + 1)); from.push(new Array(m + 1)); }
+    dp[0][0] = 0;
+    for (i = 1; i <= n; i++) { dp[i][0] = i; from[i][0] = 'del'; }
+    for (j = 1; j <= m; j++) { dp[0][j] = j; from[0][j] = 'ins'; }
+    for (i = 1; i <= n; i++) {
+      for (j = 1; j <= m; j++) {
+        var sub = dp[i - 1][j - 1] + (1 - charSim(a[i - 1], b[j - 1]));
+        var del = dp[i - 1][j] + 1;
+        var ins = dp[i][j - 1] + 1;
+        if (sub <= del && sub <= ins) { dp[i][j] = sub; from[i][j] = 'sub'; }
+        else if (del <= ins) { dp[i][j] = del; from[i][j] = 'del'; }
+        else { dp[i][j] = ins; from[i][j] = 'ins'; }
+      }
+    }
+    var sims = new Array(n).fill(0);
     i = n; j = m;
     while (i > 0 && j > 0) {
-      if (a[i - 1] === b[j - 1]) { matched[i - 1] = true; i--; j--; }
-      else if (dp[i - 1][j] >= dp[i][j - 1]) i--;
-      else j--;
+      var f = from[i][j];
+      if (f === 'sub') { sims[i - 1] = charSim(a[i - 1], b[j - 1]); i--; j--; }
+      else if (f === 'del') { i--; }
+      else { j--; }
     }
-    return matched;
+    return sims;
   }
-  function evaluateSpeech(target, heard) {
+  function scoreSpeech(target, heard) {
     var t = normTokens(target), h = normTokens(heard);
-    var matched = lcsMatch(t, h);
-    var hit = Object.keys(matched).length;
-    var score = t.length ? Math.round(hit / t.length * 100) : 0;
+    if (!t.length) return { score: 0, tokens: [], sims: [], heard: heard };
+    var sims = alignTokens(t, h);
+    var sum = sims.reduce(function (x, y) { return x + y; }, 0);
+    return { score: Math.round(sum / t.length * 100), tokens: t, sims: sims, heard: heard };
+  }
+  function evaluateAlternatives(target, alts) {
+    var best = null;
+    (alts || []).forEach(function (a) {
+      var r = scoreSpeech(target, a);
+      if (!best || r.score > best.score) best = r;
+    });
+    if (!best) best = { score: 0, tokens: normTokens(target), sims: [], heard: '' };
 
     $('eval-panel').hidden = false;
-    $('eval-num').textContent = score;
-    $('eval-words').innerHTML = t.map(function (w, i) {
-      return '<span class="eval-word ' + (matched[i] ? 'ok' : 'bad') + '">' + w + '</span>';
+    $('eval-num').textContent = best.score;
+    $('eval-words').innerHTML = best.tokens.map(function (w, i) {
+      var s = best.sims[i] || 0;
+      var cls = s >= 0.85 ? 'ok' : s >= 0.5 ? 'near' : 'bad';
+      var pct = cls === 'near' ? '<small>' + Math.round(s * 100) + '%</small>' : '';
+      return '<span class="eval-word ' + cls + '">' + w + pct + '</span>';
     }).join('');
-    $('eval-heard').textContent = h.length ? ('识别为：' + heard) : '没有识别到语音';
-    $('eval-tip').textContent = score >= 85 ? '很接近，继续保持'
-      : score >= 65 ? '基本能听懂，注意红色词的发音'
-      : '再读一遍，放慢一点，每个音节读清楚';
-    logActivity(score >= 65);
+    $('eval-heard').textContent = best.heard ? ('识别为：' + best.heard) : '没有识别到语音';
+    $('eval-tip').textContent = best.score >= 90 ? '很准，保持这个语速'
+      : best.score >= 75 ? '基本准确，黄色词再读清楚一点'
+      : best.score >= 50 ? '有些词没读准，放慢速度，逐个音节读'
+      : '再试一次：靠近麦克风，逐词朗读';
+    logActivity(best.score >= 75);
     save();
   }
   function startEval() {
@@ -1083,9 +1094,11 @@
     var rec = new SR();
     rec.lang = 'ms-MY';
     rec.interimResults = false;
-    rec.maxAlternatives = 1;
+    rec.maxAlternatives = 3;
     rec.onresult = function (e) {
-      evaluateSpeech(s.ms, e.results[0][0].transcript || '');
+      var alts = [], res = e.results[0];
+      for (var i = 0; i < res.length; i++) alts.push(res[i].transcript || '');
+      evaluateAlternatives(s.ms, alts);
     };
     rec.onerror = function (e) {
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
@@ -1347,7 +1360,6 @@
       if (!s) return;
       playAudio(sentenceAudio(s.lessonId, s.index || 0), s.ms);
     });
-    $('speak-rec').addEventListener('click', toggleRecord);
     $('speak-eval').addEventListener('click', startEval);
     $('mic-consent').addEventListener('change', function (e) {
       $('mic-allow').disabled = !e.target.checked;

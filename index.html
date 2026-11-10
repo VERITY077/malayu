@@ -224,7 +224,7 @@
   <!-- 口语 -->
   <section class="view" id="view-speak">
     <h2 class="page-title">口语</h2>
-    <p class="muted mb">先听原音，再录音，回放对比。</p>
+    <p class="muted mb">先听原音，再朗读，让浏览器判断发音。</p>
 
     <div class="card">
       <div class="row">
@@ -236,10 +236,8 @@
       <div class="muted" id="speak-src"></div>
       <div class="row mt">
         <button class="btn ghost" id="speak-play">🔊 原音</button>
-        <button class="btn ghost" id="speak-rec">● 录音</button>
         <button class="btn primary" id="speak-eval">🎯 评测</button>
       </div>
-      <audio id="speak-audio" controls hidden></audio>
       <div class="muted mt" id="speak-tip"></div>
 
       <div class="eval-panel" id="eval-panel" hidden>
@@ -272,7 +270,7 @@
 <div class="mic-modal" id="mic-modal" hidden>
   <div class="mic-card">
     <h2>录音授权</h2>
-    <p class="muted">录音只保存在本机浏览器，不会上传。发音评测会把音频交给浏览器的语音识别服务处理。</p>
+    <p class="muted">评测时浏览器会使用麦克风，把语音交给语音识别服务判断发音是否准确。不会保存录音。</p>
     <label class="consent-row">
       <input type="checkbox" id="mic-consent">
       <span>我同意使用麦克风录音</span>

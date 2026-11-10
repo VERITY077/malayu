@@ -388,3 +388,5 @@ audio{width:100%;margin-top:14px}
 .consent-row{display:flex;align-items:flex-start;gap:10px;margin-top:18px;font-size:15px;cursor:pointer}
 .consent-row input{width:20px;height:20px;margin-top:1px;accent-color:var(--accent)}
 .mic-msg{font-size:13px;color:var(--muted);min-height:18px;margin-top:12px}
+.eval-word.near{background:#fdf1dc;color:var(--warn);font-weight:650}
+.eval-word small{font-size:10px;margin-left:2px;opacity:.8}
