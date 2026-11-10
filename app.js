@@ -1006,7 +1006,7 @@
     var email = ($('auth-email').value || '').trim();
     var code = ($('auth-code').value || '').replace(/\D/g, '');
     if (!email) { $('auth-msg').textContent = '请先填邮箱'; return; }
-    if (code.length !== 6) { $('auth-msg').textContent = '请输入 6 位数字验证码'; return; }
+    if (code.length < 6 || code.length > 10) { $('auth-msg').textContent = '请输入邮件里的验证码（6–10 位数字）'; return; }
     $('auth-msg').textContent = '正在验证…';
     Cloud.verifyOtp(email, code).then(function (res) {
       if (res && res.error) { $('auth-msg').textContent = '验证失败：' + res.error.message; return; }

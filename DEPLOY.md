@@ -70,8 +70,8 @@ create policy "update own" on public.progress
   <p style="margin:0 0 4px;font-size:32px;font-weight:700;letter-spacing:8px;color:#0e7c66;">{{ .Token }}</p>
   <p style="margin:0 0 20px;color:#6b7a75;font-size:12px;">Your verification code is shown above.</p>
 
-  <p style="margin:0 0 6px;">把上面 6 位数字填到网页输入框即可登录。</p>
-  <p style="margin:0 0 20px;color:#6b7a75;font-size:13px;">Enter the 6-digit code on the website to sign in.</p>
+  <p style="margin:0 0 6px;">把上面的验证码填到网页输入框即可登录。</p>
+  <p style="margin:0 0 20px;color:#6b7a75;font-size:13px;">Enter the code from this email on the website to sign in.</p>
 
   <p style="margin:0 0 6px;">也可以直接点链接登录：</p>
   <p style="margin:0 0 20px;"><a href="{{ .ConfirmationURL }}" style="color:#0e7c66;">直接登录 · Sign in directly</a></p>
