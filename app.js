@@ -981,7 +981,7 @@
       btn.classList.remove('primary');
       $('speak-tip').textContent = '正在录音……说完点「停止」。';
     }).catch(function () {
-      $('speak-tip').textContent = '麦克风不可用：点地址栏左侧的锁图标 → 麦克风 → 允许，然后刷新；也可能是系统没有授权。';
+      $('speak-tip').textContent = '麦克风不可用：点地址栏最左侧的网站图标 → 网站设置 → 麦克风 → 允许；再到 macOS 系统设置 → 隐私与安全性 → 麦克风，勾选 Chrome，然后刷新。';
     });
   }
 
@@ -1058,7 +1058,7 @@
     };
     rec.onerror = function (e) {
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-        $('speak-tip').textContent = '麦克风被拒绝：点地址栏左侧的锁图标 → 麦克风 → 允许，然后刷新';
+        $('speak-tip').textContent = '麦克风被拒绝：点地址栏最左侧的网站图标 → 网站设置 → 麦克风 → 允许；再到 macOS 系统设置 → 隐私与安全性 → 麦克风，勾选 Chrome';
       } else if (e.error === 'no-speech') {
         $('speak-tip').textContent = '没有听到声音，靠近麦克风再试一次';
       } else {
