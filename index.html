@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>马来语学习 · MPU1012</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-dot"></span>
+    马来语学习
+  </div>
+  <div class="topbar-right">
+    <div class="countdown" id="countdown">—</div>
+    <button class="icon-btn auth-btn" id="btn-auth" hidden>登录</button>
+    <button class="icon-btn" id="btn-refresh" title="刷新" aria-label="刷新">↻</button>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- 首页 -->
+  <section class="view" id="view-home">
+    <div class="hero card">
+      <div class="hero-label" id="hero-label">当前单元</div>
+      <div class="hero-title" id="hero-title">—</div>
+      <div class="hero-sub" id="hero-sub">—</div>
+      <div class="hero-actions">
+        <button class="btn primary" id="btn-learn">开始学习</button>
+        <button class="btn ghost" id="btn-review">复习</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <span class="strong" id="progress-label">第 1 周 · 单元 1</span>
+        <span class="muted" id="progress-count">0 / 0</span>
+      </div>
+      <div class="bar mt"><div class="bar-fill" id="progress-fill"></div></div>
+      <div class="muted mt" id="progress-next">下一课：L1 语音与拼读</div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat card"><div class="stat-num" id="stat-streak">0</div><div class="stat-label">连续天数</div></div>
+      <div class="stat card"><div class="stat-num" id="stat-total">0</div><div class="stat-label">累计复习</div></div>
+      <div class="stat card"><div class="stat-num" id="stat-acc">—</div><div class="stat-label">正确率</div></div>
+    </div>
+
+    <div class="card exam-card">
+      <div class="card-title">考试</div>
+      <div class="exam-title" id="exam-title">Listening &amp; Writing · 30%</div>
+      <div class="exam-date" id="exam-date">12 月 7–11 日 · 课内时间</div>
+      <div class="exam-parts" id="exam-parts"></div>
+      <div class="muted mt" id="exam-others"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">四项练习</div>
+      <div class="grid-2">
+        <button class="tile" data-go="vocab"><span>背单词</span><small>复习全部已学</small></button>
+        <button class="tile" data-go="dictation"><span>听写</span><small>数字 · 货币 · 时间</small></button>
+        <button class="tile" data-go="sentence"><span>造句</span><small>词序重组</small></button>
+        <button class="tile" data-go="speak"><span>口语</span><small>跟读对比</small></button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">设置</div>
+      <div class="row">
+        <label class="muted" for="rate">语速</label>
+        <input id="rate" type="range" min="0.6" max="1.2" step="0.05" value="0.9">
+        <span class="muted" id="rate-val">0.9×</span>
+      </div>
+      <div class="row mt">
+        <label class="muted" for="voice">语音</label>
+        <select id="voice" class="select grow"></select>
+      </div>
+      <div class="row mt">
+        <button class="btn ghost small" id="btn-test-voice">试听</button>
+        <button class="btn ghost small" id="btn-reset">重置学习数据</button>
+      </div>
+      <p class="muted small">学习进度自动保存在本浏览器。换网址（localhost / IP / 直接打开文件）或清缓存会读不到原记录。</p>
+    </div>
+
+    <p class="footnote">
+      内容取自你上传的课件，每条标注页码。课件未覆盖的知识点一律不在本页出现。
+    </p>
+  </section>
+
+  <!-- 课程 -->
+  <section class="view" id="view-course">
+    <h2 class="page-title">课程表</h2>
+    <p class="muted mb">按内容划分单元，按周次顺序推进。</p>
+    <div id="lesson-list"></div>
+  </section>
+
+  <!-- 学习（新词） -->
+  <section class="view" id="view-learn">
+    <button class="btn ghost small" id="learn-back">← 返回</button>
+    <div class="row mt">
+      <span class="strong" id="learn-title">第 1 周 · L1</span>
+      <span class="muted" id="learn-count">1 / 10</span>
+    </div>
+    <div class="learn-card card">
+      <div class="learn-visual">
+        <img class="learn-img" id="learn-img" alt="" hidden>
+        <div class="learn-glyph" id="learn-glyph">0</div>
+      </div>
+      <div class="learn-word" id="learn-word">—</div>
+      <div class="learn-syl" id="learn-syl"></div>
+      <button class="btn ghost small" id="learn-audio">🔊 发音</button>
+      <div class="learn-zh" id="learn-zh"></div>
+      <div class="learn-example" id="learn-example" hidden></div>
+      <div class="learn-note" id="learn-note"></div>
+      <div class="learn-src" id="learn-src"></div>
+    </div>
+    <div class="row">
+      <button class="btn ghost" id="learn-prev">上一个</button>
+      <button class="btn primary" id="learn-next">下一个</button>
+    </div>
+    <p class="muted mt" id="learn-sub">先看图和发音，建立第一印象</p>
+  </section>
+
+  <!-- 复习（旧背单词） -->
+  <section class="view" id="view-vocab">
+    <h2 class="page-title">复习</h2>
+    <p class="muted mb" id="vocab-sub">艾宾浩斯曲线 · 1→2→4→7→15→30→60 天</p>
+
+    <div class="review-wrap" id="review-wrap">
+      <div class="flashcard" id="flashcard">
+        <div class="fc-front">
+          <div class="fc-badge" id="fc-badge">新词</div>
+          <img class="fc-img" id="fc-img" alt="" hidden>
+          <div class="fc-word" id="fc-word">—</div>
+          <div class="fc-syl" id="fc-syl"></div>
+          <button class="btn ghost small" id="fc-audio">🔊 发音</button>
+          <div class="fc-hint">点击卡片查看释义</div>
+        </div>
+        <div class="fc-back">
+          <div class="fc-zh" id="fc-zh">—</div>
+          <div class="fc-pos" id="fc-pos"></div>
+          <div class="fc-src" id="fc-src"></div>
+        </div>
+      </div>
+      <div class="grade-row" id="grade-row">
+        <button class="btn grade g0" data-q="0">忘记</button>
+        <button class="btn grade g1" data-q="1">模糊</button>
+        <button class="btn grade g2" data-q="2">记得</button>
+        <button class="btn grade g3" data-q="3">简单</button>
+      </div>
+    </div>
+
+    <div class="empty" id="vocab-empty" hidden>
+      <div class="empty-icon">✓</div>
+      <p id="vocab-empty-text">今天的卡片复习完了。</p>
+      <button class="btn primary" data-go="home">回首页</button>
+    </div>
+  </section>
+
+  <!-- 听写 -->
+  <section class="view" id="view-dictation">
+    <h2 class="page-title">听写</h2>
+    <p class="muted mb">听发音，写下答案。对应考试 Part A（10 分）。</p>
+
+    <div class="card" id="dict-setup">
+      <div class="card-title">选择内容</div>
+      <div class="chips" id="dict-types">
+        <button class="chip active" data-type="number">数字</button>
+        <button class="chip" data-type="currency">货币</button>
+        <button class="chip" data-type="time">时间</button>
+        <button class="chip" data-type="word">词语</button>
+      </div>
+      <button class="btn primary mt" id="dict-start">开始（10 题）</button>
+    </div>
+
+    <div class="card" id="dict-play" hidden>
+      <div class="dict-progress"><span id="dict-idx">1</span> / <span id="dict-total">10</span></div>
+      <button class="btn audio-big" id="dict-play-audio">🔊 再听一遍</button>
+      <input class="input" id="dict-input" placeholder="输入答案" autocomplete="off" autocapitalize="off">
+      <div class="dict-feedback" id="dict-feedback"></div>
+      <div class="row mt">
+        <button class="btn primary" id="dict-submit">提交</button>
+        <button class="btn ghost" id="dict-skip">跳过</button>
+      </div>
+    </div>
+
+    <div class="card" id="dict-done" hidden>
+      <div class="card-title">完成</div>
+      <p id="dict-result"></p>
+      <button class="btn primary" id="dict-again">再来一组</button>
+    </div>
+  </section>
+
+  <!-- 造句 -->
+  <section class="view" id="view-sentence">
+    <h2 class="page-title">造句</h2>
+    <p class="muted mb">把打乱的词按正确顺序排列。</p>
+
+    <div class="card">
+      <div class="muted" id="sent-zh">—</div>
+      <div class="sentence-slots" id="sent-slots"></div>
+      <div class="sentence-bank" id="sent-bank"></div>
+      <div class="row mt">
+        <button class="btn ghost" id="sent-reset">重来</button>
+        <button class="btn ghost" id="sent-next">下一句</button>
+        <button class="btn primary" id="sent-check">检查</button>
+      </div>
+      <div class="dict-feedback" id="sent-feedback"></div>
+      <div class="muted mt" id="sent-src"></div>
+      <div class="analysis" id="sent-analysis" hidden></div>
+    </div>
+  </section>
+
+  <!-- 口语 -->
+  <section class="view" id="view-speak">
+    <h2 class="page-title">口语</h2>
+    <p class="muted mb">先听原音，再录音，回放对比。</p>
+
+    <div class="card">
+      <div class="row">
+        <button class="btn ghost" id="speak-prev">←</button>
+        <div class="grow center" id="speak-zh">—</div>
+        <button class="btn ghost" id="speak-next">→</button>
+      </div>
+      <div class="speak-ms" id="speak-ms">—</div>
+      <div class="muted" id="speak-src"></div>
+      <div class="row mt">
+        <button class="btn ghost" id="speak-play">🔊 原音</button>
+        <button class="btn ghost" id="speak-rec">● 录音</button>
+        <button class="btn primary" id="speak-eval">🎯 评测</button>
+      </div>
+      <audio id="speak-audio" controls hidden></audio>
+      <div class="muted mt" id="speak-tip"></div>
+
+      <div class="eval-panel" id="eval-panel" hidden>
+        <div class="eval-score">
+          <span id="eval-num">0</span><small>分</small>
+        </div>
+        <div class="eval-words" id="eval-words"></div>
+        <div class="muted" id="eval-heard"></div>
+        <div class="eval-tip" id="eval-tip"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- 首次设定 -->
+<div class="onboarding" id="onboarding" hidden>
+  <div class="onb-card">
+    <h1>开始之前</h1>
+    <p class="muted">设定起点后，按内容单元顺序推进。</p>
+
+    <label class="onb-label">你从第几周开始学？</label>
+    <select id="onb-week" class="select onb-select"></select>
+    <p class="muted small">更早的周次视为已掌握，直接进入复习库。背单词与复习每 10 个词一组。</p>
+
+    <button class="btn primary onb-start" id="onb-start">开始学习</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="auth-modal" id="auth-modal" hidden>
+  <div class="auth-card">
+    <h2>登录同步</h2>
+    <p class="muted" id="auth-sub">用邮箱接收登录链接，学习进度会同步到云端，换设备也能接着学。</p>
+
+    <div id="auth-form">
+      <input class="input" id="auth-email" type="email" placeholder="you@example.com" autocomplete="email">
+      <button class="btn primary mt" id="auth-send">发送登录链接</button>
+    </div>
+
+    <div id="auth-user" hidden>
+      <p class="strong" id="auth-email-show">—</p>
+      <button class="btn ghost mt" id="auth-logout">退出登录</button>
+    </div>
+
+    <p class="auth-msg" id="auth-msg"></p>
+    <button class="btn ghost small" id="auth-close">关闭</button>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <button class="tab active" data-go="home">首页</button>
+  <button class="tab" data-go="course">课程</button>
+  <button class="tab" data-go="vocab">复习</button>
+  <button class="tab" data-go="dictation">听写</button>
+  <button class="tab" data-go="sentence">造句</button>
+  <button class="tab" data-go="speak">口语</button>
+</nav>
+
+<script src="config.js"></script>
+<script src="cloud.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
