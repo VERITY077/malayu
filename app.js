@@ -433,10 +433,12 @@
     if (im) {
       imgEl.src = im; imgEl.hidden = false;
       glyphEl.hidden = true;
+      $('learn-visual-note').hidden = true;
     } else {
       imgEl.hidden = true; imgEl.removeAttribute('src');
       glyphEl.hidden = false;
       glyphEl.textContent = glyphFor(w);
+      $('learn-visual-note').hidden = false;
     }
 
     var ex = exampleFor(u, w);
