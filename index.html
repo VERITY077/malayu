@@ -281,7 +281,13 @@
     </div>
 
     <div id="auth-user" hidden>
-      <p class="strong" id="auth-email-show">—</p>
+      <div class="profile-row">
+        <div class="avatar" id="profile-avatar">🙂</div>
+        <input class="input profile-name" id="profile-name" placeholder="你的名字" maxlength="16" autocomplete="nickname">
+      </div>
+      <div class="avatar-grid" id="avatar-grid"></div>
+      <button class="btn primary mt" id="profile-save">保存资料</button>
+      <p class="muted small" id="auth-email-show">—</p>
       <button class="btn ghost mt" id="auth-logout">退出登录</button>
     </div>
 

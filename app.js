@@ -58,7 +58,7 @@
   /* ---------------- state ---------------- */
   function defaultState() {
     return {
-      profile: { onboarded: false, startWeek: 1, dailyMinutes: 15 },
+      profile: { onboarded: false, startWeek: 1, dailyMinutes: 15, name: '', avatar: '🙂' },
       progress: { unitIndex: 0, learnIdx: 0, today: { date: '', units: 0 } },
       srs: {}, log: {}, settings: { rate: 0.9, voice: '' },
       updatedAt: 0
@@ -924,16 +924,57 @@
 
   /* ---------------- 账号与云同步 ---------------- */
   function isLoggedIn() { return !!(window.Cloud && Cloud.currentUser()); }
+  var AVATARS = ['🙂', '😀', '🐱', '🐶', '🦊', '🐼', '🌸', '🍀', '⭐', '🌙', '🔥', '📚'];
+
+  function renderProfileFields() {
+    var grid = $('avatar-grid');
+    if (!grid) return;
+    if (!grid.children.length) {
+      AVATARS.forEach(function (a) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'avatar-opt';
+        b.textContent = a;
+        b.addEventListener('click', function () {
+          $('profile-avatar').textContent = a;
+          Array.prototype.forEach.call(grid.children, function (c) {
+            c.classList.toggle('active', c.textContent === a);
+          });
+        });
+        grid.appendChild(b);
+      });
+    }
+    var cur = S.profile.avatar || '🙂';
+    $('profile-avatar').textContent = cur;
+    $('profile-name').value = S.profile.name || '';
+    Array.prototype.forEach.call(grid.children, function (c) {
+      c.classList.toggle('active', c.textContent === cur);
+    });
+  }
+
+  function saveProfile() {
+    S.profile.name = ($('profile-name').value || '').trim().slice(0, 16);
+    S.profile.avatar = $('profile-avatar').textContent || '🙂';
+    save();
+    updateAuthUI();
+    toast('资料已保存');
+  }
+
   function updateAuthUI() {
     var btn = $('btn-auth');
     if (!btn) return;
     if (!window.Cloud || !Cloud.configured()) { btn.hidden = true; return; }
     btn.hidden = false;
     var u = Cloud.currentUser();
-    btn.textContent = u ? ((u.email || '我').charAt(0).toUpperCase()) : '登录';
+    btn.textContent = u ? (S.profile.avatar || '🙂') : '登录';
+    btn.classList.toggle('has-avatar', !!u);
     $('auth-form').hidden = !!u;
     $('auth-user').hidden = !u;
-    if (u) { $('auth-code-box').hidden = true; $('auth-email-show').textContent = u.email || ''; }
+    if (u) {
+      $('auth-code-box').hidden = true;
+      $('auth-email-show').textContent = u.email || '';
+      renderProfileFields();
+    }
   }
   function openAuth() {
     if (!window.Cloud || !Cloud.configured()) { toast('未配置云端，当前为本机模式'); return; }
@@ -1020,6 +1061,7 @@
     $('auth-send').addEventListener('click', sendLogin);
     $('auth-verify').addEventListener('click', verifyCode);
     $('auth-code').addEventListener('keydown', function (e) { if (e.key === 'Enter') verifyCode(); });
+    $('profile-save').addEventListener('click', saveProfile);
     $('auth-logout').addEventListener('click', logout);
     $('auth-email').addEventListener('keydown', function (e) { if (e.key === 'Enter') sendLogin(); });
     $('auth-modal').addEventListener('click', function (e) { if (e.target === $('auth-modal')) closeAuth(); });
