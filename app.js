@@ -1,5 +1,13 @@
 (function () {
   'use strict';
+  window.addEventListener('error', function (e) {
+    if (document.getElementById('fatal-bar')) return;
+    var d = document.createElement('div');
+    d.id = 'fatal-bar';
+    d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;background:#fdeceb;color:#b3261e;padding:10px 14px;font:13px -apple-system,sans-serif;z-index:999';
+    d.textContent = '页面出错：' + (e.message || '未知错误') + '，刷新试试';
+    document.body.appendChild(d);
+  });
 
   var COURSE = window.COURSE;
   var LS_KEY = 'ml_state_v3';
@@ -1078,14 +1086,21 @@
     logActivity(best.score >= 75);
     save();
   }
+  var evalTimer = null;
+  function endEval(btn) {
+    clearTimeout(evalTimer);
+    evalBusy = false;
+    if (btn) { btn.disabled = false; btn.textContent = '🎯 评测'; }
+  }
   function startEval() {
+    var btn = $('speak-eval');
     if (!SR) { toast('当前浏览器不支持语音识别，请用 Chrome'); return; }
     if (evalBusy) return;
     if (!S.settings.micConsent) { askMic('eval'); return; }
     var s = speakList[speakIdx];
-    if (!s) return;
+    if (!s) { toast('没有可评测的例句'); return; }
+
     evalBusy = true;
-    var btn = $('speak-eval');
     btn.disabled = true;
     btn.textContent = '… 识别中';
     $('eval-panel').hidden = true;
@@ -1095,10 +1110,12 @@
     rec.lang = 'ms-MY';
     rec.interimResults = false;
     rec.maxAlternatives = 3;
+
     rec.onresult = function (e) {
       var alts = [], res = e.results[0];
       for (var i = 0; i < res.length; i++) alts.push(res[i].transcript || '');
       evaluateAlternatives(s.ms, alts);
+      endEval(btn);
     };
     rec.onerror = function (e) {
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
@@ -1108,14 +1125,19 @@
       } else {
         $('speak-tip').textContent = '识别失败：' + e.error + '（需要联网，Chrome 的识别在云端完成）';
       }
+      endEval(btn);
     };
-    rec.onend = function () {
-      evalBusy = false;
-      btn.disabled = false;
-      btn.textContent = '🎯 评测';
-    };
+    rec.onend = function () { endEval(btn); };
+
+    evalTimer = setTimeout(function () {
+      try { rec.abort(); } catch (err) {}
+      $('speak-tip').textContent = '识别超时：检查网络后重试（Chrome 的识别在云端完成）';
+      endEval(btn);
+    }, 12000);
+
     try { rec.start(); } catch (err) {
-      evalBusy = false; btn.disabled = false; btn.textContent = '🎯 评测';
+      $('speak-tip').textContent = '无法启动识别：' + (err.message || err);
+      endEval(btn);
     }
   }
 
@@ -1383,7 +1405,12 @@
 
   /* ---------------- init ---------------- */
   function init() {
+    if (!window.COURSE || !window.COURSE.lessons) {
+      document.body.innerHTML = '<div style="padding:40px;font:16px/1.6 -apple-system,sans-serif">数据加载失败，请刷新页面重试。</div>';
+      return;
+    }
     bind();
+    if (!SR) { var eb = $('speak-eval'); if (eb) { eb.disabled = true; eb.textContent = '不支持评测'; } }
     initOnboarding();
     renderDictCategories();
     window.addEventListener('beforeunload', save);
