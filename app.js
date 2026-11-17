@@ -42,6 +42,28 @@
     imgEl.hidden = false;
     imgEl.src = src;
   }
+  function ruleIpa(ms) {
+    var s = String(ms).toLowerCase().replace(/-/g, ' ');
+    s = s.replace(/ng/g, 'ŋ').replace(/ny/g, 'ɲ').replace(/sy/g, 'ʃ')
+         .replace(/kh/g, 'x').replace(/gh/g, 'ɣ')
+         .replace(/ai/g, 'ai̯').replace(/au/g, 'au̯').replace(/oi/g, 'oi̯')
+         .replace(/c/g, 'tʃ').replace(/j/g, 'dʒ').replace(/y/g, 'j')
+         .replace(/q/g, 'k');
+    return '/' + s + '/';
+  }
+  var ANTONYMS = {
+    'besar': 'kecil', 'kecil': 'besar', 'tinggi': 'rendah', 'rendah': 'tinggi',
+    'baru': 'lama', 'lama': 'baru', 'banyak': 'sedikit', 'sedikit': 'banyak',
+    'murah': 'mahal', 'mahal': 'murah', 'cepat': 'lambat', 'lambat': 'cepat',
+    'senang': 'susah', 'susah': 'senang', 'rajin': 'malas', 'malas': 'rajin',
+    'gembira': 'sedih', 'sedih': 'gembira', 'panas': 'sejuk', 'sejuk': 'panas',
+    'masuk': 'keluar', 'keluar': 'masuk', 'atas': 'bawah', 'bawah': 'atas',
+    'hadapan': 'belakang', 'belakang': 'hadapan', 'kiri': 'kanan', 'kanan': 'kiri'
+  };
+  function ipaOf(lessonId, ms) {
+    /* Wiktionary 的马来语 IPA 覆盖太少且偶有错配，统一用拼读规则 */
+    return ruleIpa(ms);
+  }
   function slugify(s) {
     return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   }
@@ -530,12 +552,16 @@
     $('learn-count-txt').textContent = (sess.idx + 1) + ' / ' + sess.list.length;
     $('learn-word').textContent = w.ms;
     $('learn-syl').textContent = (w.syl || '').replace(/-/g, '·');
+    $('learn-ipa').textContent = ipaOf(u.lessonId, w.ms);
 
     var ex = exampleOf(u, w);
     if (ex) {
+      var l = lessonOf(u.lessonId);
+      var idx = (l.sentences || []).indexOf(ex);
+      var img = ((window.WORD_EXTRA || {}).sentImg || {})[u.lessonId + '-s' + (idx + 1)];
       $('learn-example').hidden = false;
-      $('learn-example').innerHTML = highlight(ex.ms, w.ms) +
-        '<div class="muted small">' + ex.zh + '</div>';
+      $('learn-example').innerHTML = (img ? '<img class="sent-img" src="' + img + '" alt="">' : '') +
+        highlight(ex.ms, w.ms) + '<div class="muted small">' + ex.zh + '</div>';
     } else {
       $('learn-example').hidden = true;
     }
@@ -572,6 +598,14 @@
     $('learn-example-zh').textContent = ex ? ex.zh : '';
     $('learn-note').textContent = w.note || '';
     $('learn-src').textContent = '出处：' + u.file + ' p.' + w.page;
+    var rel = (u.words || []).filter(function (x) { return x.ms !== w.ms; }).slice(0, 6);
+    var chips = rel.map(function (x) {
+      return '<span class="rel-chip"><b>' + x.ms + '</b> ' + x.zh + '</span>';
+    });
+    if (ANTONYMS[w.ms]) {
+      chips.unshift('<span class="rel-chip antonym">反义 <b>' + ANTONYMS[w.ms] + '</b></span>');
+    }
+    $('learn-rel').innerHTML = chips.join('');
     $('learn-reveal').hidden = false;
     $('learn-actions').hidden = true;
     $('learn-actions2').hidden = false;
@@ -635,7 +669,7 @@
 
     var st = stageOf(S.srs[cur._key]);
     $('fc-badge').textContent = st === 0 ? '新词' : '第 ' + st + ' 次复习';
-    $('fc-syl').textContent = cur.syl;
+    $('fc-syl').textContent = (cur.syl || '').replace(/-/g, '·') + '  ' + ipaOf(cur.lessonId, cur.ms);
     $('fc-zh').textContent = cur.zh;
     $('fc-pos').textContent = cur.pos + (cur.lessonCode ? ' · ' + cur.lessonCode : '');
     $('fc-src').textContent = '[出处：' + (lessonOf(cur.lessonId) ? lessonOf(cur.lessonId).file : '') + ' p.' + cur.page + ']';
@@ -895,6 +929,9 @@
     sent.current = s;
     sent.lesson = l;
     $('sent-zh').textContent = s.zh;
+    var simg = ((window.WORD_EXTRA || {}).sentImg || {})[l.id + '-s' + ((s.index || 0) + 1)];
+    if (simg) { $('sent-img').src = simg; $('sent-img').hidden = false; }
+    else { $('sent-img').hidden = true; $('sent-img').removeAttribute('src'); }
     $('sent-src').textContent = (ctx.fallback ? '本课暂无例句，改练 ' + l.code + ' 的句子 · ' : '') +
       '[出处：' + l.file + ' p.' + s.page + ']';
     $('sent-feedback').textContent = '';
