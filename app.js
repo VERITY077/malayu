@@ -631,7 +631,7 @@
 
   /* ---------------- 测验 ---------------- */
   var quiz = { mode: 'listen', list: [], idx: 0, correct: 0, locked: false };
-  var QUIZ_LABEL = { listen: '听力', read: '词汇翻译', zh: '中译马', spell: '拼写', sentence: '造句' };
+  var QUIZ_LABEL = { listen: '听力', sent: '句子听力', read: '词汇翻译', zh: '中译马', spell: '拼写', sentence: '造句' };
 
   function allVocabWithLesson() {
     var out = [];
@@ -659,10 +659,22 @@
     save();
   }
 
+  function sentencePool() {
+    var out = [];
+    COURSE.lessons.forEach(function (l) {
+      (l.sentences || []).forEach(function (s, i) {
+        out.push({ ms: s.ms, zh: s.zh, lessonId: l.id, index: i });
+      });
+    });
+    return out;
+  }
+
   function makeQuizQ(w, mode, pool) {
     var others = shuffle(pool.filter(function (x) { return x.ms !== w.ms; })).slice(0, 3);
-    var opts = [w.ms].concat(others.map(function (x) { return x.ms; }));
-    if (mode !== 'zh') opts = [w.zh].concat(others.map(function (x) { return x.zh; }));
+    var opts;
+    if (mode === 'sent') opts = [w.zh].concat(others.map(function (x) { return x.zh; }));
+    else opts = [w.ms].concat(others.map(function (x) { return x.ms; }));
+    if (mode === 'read' || mode === 'listen') opts = [w.zh].concat(others.map(function (x) { return x.zh; }));
     var uniq = [];
     opts.forEach(function (o) { if (o && uniq.indexOf(o) < 0) uniq.push(o); });
     return { w: w, options: shuffle(uniq), answer: mode === 'zh' ? w.ms : w.zh };
@@ -685,7 +697,7 @@
   function startQuiz(mode) {
     if (mode === 'sentence') { show('sentence'); return; }
     quiz = { mode: mode, list: [], idx: 0, correct: 0, locked: false };
-    var pool = quizPool();
+    var pool = mode === 'sent' ? sentencePool() : quizPool();
     var picks = shuffle(pool).slice(0, 10);
     quiz.list = picks.map(function (w) { return makeQuizQ(w, mode, pool); });
     $('quiz-setup').hidden = true;
@@ -695,7 +707,8 @@
   }
 
   function playQuizAudio(q) {
-    playAudio(vocabAudio(q.w.lessonId, q.w.ms), q.w.ms);
+    if (quiz.mode === 'sent') playAudio(sentenceAudio(q.w.lessonId, q.w.index), q.w.ms);
+    else playAudio(vocabAudio(q.w.lessonId, q.w.ms), q.w.ms);
   }
 
   function renderQuiz() {
@@ -729,6 +742,10 @@
       $('quiz-prompt').textContent = '听发音，选出中文';
       audio.hidden = false;
       playQuizAudio(q);
+    } else if (quiz.mode === 'sent') {
+      $('quiz-prompt').textContent = '听整句，选出中文';
+      audio.hidden = false;
+      playQuizAudio(q);
     } else if (quiz.mode === 'read') {
       $('quiz-prompt').textContent = q.w.ms;
     } else {
@@ -750,7 +767,8 @@
     var ok = isSpell ? normLoose(val) === normLoose(q.w.ms) : val === q.answer;
     quiz.locked = true;
     if (ok) quiz.correct++;
-    gradeKey(q.w, ok);
+    if (quiz.mode === 'sent') { logActivity(ok); save(); }
+    else gradeKey(q.w, ok);
 
     if (isSpell) {
       $('quiz-input').disabled = true;
