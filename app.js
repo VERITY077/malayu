@@ -24,6 +24,30 @@
     d.setDate(d.getDate() + n);
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
+  function applyImage(imgEl, lessonId, ms, onNone) {
+    var key = lessonId + ':' + ms;
+    var src = (COURSE.images && COURSE.images[key]) ||
+              (window.AI_IMAGES && window.AI_IMAGES[key]) || '';
+    if (!src) {
+      imgEl.hidden = true;
+      imgEl.removeAttribute('src');
+      if (onNone) onNone();
+      return;
+    }
+    imgEl.onerror = function () {
+      imgEl.hidden = true;
+      imgEl.removeAttribute('src');
+      if (onNone) onNone();
+    };
+    imgEl.hidden = false;
+    imgEl.src = src;
+  }
+  function slugify(s) {
+    return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  }
+  function escapeRe(s) {
+    return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
   /* 用于听写判分：忽略空格、标点、大小写 */
   function normLoose(s) {
     return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -174,11 +198,7 @@
     return { list: withLesson(cands[0].sentences, cands[0]), lesson: cands[0], fallback: true };
   }
   function totalWords() { return UNITS.reduce(function (n, u) { return n + u.words.length; }, 0); }
-  function learnedWords() {
-    var n = 0;
-    for (var i = 0; i < S.progress.unitIndex && i < UNITS.length; i++) n += UNITS[i].words.length;
-    return n;
-  }
+  function learnedWords() { return Object.keys(S.srs).length; }
 
   /* ---------------- stats ---------------- */
   function logActivity(correct) {
@@ -315,7 +335,7 @@
   }
 
   /* ---------------- navigation ---------------- */
-  var VIEWS = ['home', 'course', 'learn', 'vocab', 'dictation', 'sentence', 'speak'];
+  var VIEWS = ['home', 'course', 'learn', 'vocab', 'me', 'dictation', 'sentence', 'speak'];
   var currentView = 'home';
   function show(name) {
     currentView = name;
@@ -331,6 +351,7 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (name === 'home') renderHome();
     if (name === 'course') renderCourse();
+    if (name === 'me') renderMe();
     if (name === 'learn') renderLearn();
     if (name === 'vocab') { buildQueue(); nextCard(); }
     if (name === 'sentence') newSentence();
@@ -406,34 +427,35 @@
       return o.name + ' ' + o.weight + ' · ' + o.due;
     }).join('<br>');
   }
+  function weekday(iso) {
+    var d = new Date(iso + 'T00:00:00');
+    return ['周日','周一','周二','周三','周四','周五','周六'][d.getDay()];
+  }
   function renderHome() {
     var d = daysToExam();
     $('countdown').innerHTML = d > 0 ? '距考试 <b>' + d + '</b> 天' : '考试期间';
+    $('home-avatar').textContent = S.profile.avatar || '🙂';
+    $('home-streak').textContent = streak();
 
     var u = currentUnit();
-    if (u) {
-      $('hero-label').textContent = '第 ' + u.week + ' 周 · 单元 ' + (u.i + 1) + ' / ' + UNITS.length;
-      $('hero-title').textContent = u.title;
-      $('hero-sub').textContent = u.words.length + ' 个词 · ' + dueCount() + ' 张待复习';
-    } else {
-      $('hero-label').textContent = '全部完成';
-      $('hero-title').textContent = '课程已学完';
-      $('hero-sub').textContent = '继续复习巩固';
-    }
+    $('learn-count').textContent = u ? u.words.length : 0;
+    $('review-count').textContent = dueCount();
 
+    var t = todayStr();
+    var done = S.lastCheckin === t;
+    $('checkin-title').textContent = done ? '已签到' : '签到';
+    $('checkin-date').textContent = md(t) + ' ' + weekday(t);
+    $('checkin').classList.toggle('done', done);
+  }
+
+  function renderMe() {
+    $('me-avatar').textContent = S.profile.avatar || '🙂';
+    $('me-name').textContent = S.profile.name || '学习者';
     $('stat-streak').textContent = streak();
     $('stat-total').textContent = totalReviews();
     $('stat-acc').textContent = accuracy();
-
-    var total = totalWords();
-    var learned = learnedWords();
-    $('progress-label').textContent = u ? ('第 ' + u.week + ' 周 · 单元 ' + (u.i + 1) + '/' + UNITS.length) : '全部完成';
-    $('progress-count').textContent = learned + ' / ' + total;
-    $('progress-fill').style.width = total ? Math.round(learned / total * 100) + '%' : '0%';
-    $('progress-next').textContent = u ? ('下一课：' + u.title + ' · ' + u.words.length + ' 词') : '所有单元都学完了，继续复习吧';
-
+    $('stat-words').textContent = learnedWords();
     renderExam();
-
     $('rate').value = S.settings.rate;
     $('rate-val').textContent = Number(S.settings.rate).toFixed(2).replace(/0$/, '') + '×';
   }
@@ -470,122 +492,102 @@
           '<div class="muted">' + u.words.length + ' 词 · ' + u.words[0].ms + ' … ' + u.words[u.words.length - 1].ms + '</div>' +
           '</div>' +
           '<span class="badge ' + (done ? 'ready' : cur ? 'partial' : 'pending') + '">' + label + '</span>';
-        if (cur) div.addEventListener('click', function () { showLearn(); });
+        if (cur) div.addEventListener('click', function () { S.progress.unitIndex = u.i; save(); startLearn(); });
         box.appendChild(div);
       });
     });
   }
 
-  /* ---------------- learn ---------------- */
-  var learnIdx = 0;
-  function showLearn() {
+  /* ---------------- 学习卡片 ---------------- */
+  var sess = { list: [], idx: 0, unit: null };
+
+  function startLearn() {
     var u = currentUnit();
-    var idx = Number(S.progress.learnIdx) || 0;
-    if (!u || idx < 0 || idx >= u.words.length) idx = 0;
-    learnIdx = idx;
+    if (!u) { toast('全部单元都学完了，去复习吧'); return; }
+    sess = { list: shuffle(u.words.slice()), idx: 0, unit: u };
     show('learn');
   }
-  var DIGIT = {
-    sifar: '0', kosong: '0', satu: '1', dua: '2', tiga: '3', empat: '4',
-    lima: '5', enam: '6', tujuh: '7', lapan: '8', sembilan: '9',
-    sepuluh: '10', sebelas: '11', seratus: '100', seribu: '1000'
-  };
-  function glyphFor(w) {
-    if (DIGIT[w.ms]) return DIGIT[w.ms];
-    return (w.ms.trim().charAt(0) || '?').toUpperCase();
-  }
-  function slugify(s) {
-    return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  }
-  /* 先找课件图；没有就尝试 img/ai/<lessonId>-<slug>.jpg；再没有才回退到占位 */
-  function applyImage(imgEl, lessonId, ms, onNone) {
-    var key = lessonId + ':' + ms;
-    var src = (COURSE.images && COURSE.images[key]) ||
-              (window.AI_IMAGES && window.AI_IMAGES[key]) || '';
-    if (!src) {
-      imgEl.hidden = true;
-      imgEl.removeAttribute('src');
-      if (onNone) onNone();
-      return;
-    }
-    imgEl.onerror = function () {
-      imgEl.hidden = true;
-      imgEl.removeAttribute('src');
-      if (onNone) onNone();
-    };
-    imgEl.hidden = false;
-    imgEl.src = src;
-  }
-  function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-  function exampleFor(u, w) {
+
+  function exampleOf(u, w) {
     var l = lessonOf(u.lessonId);
-    var list = (l && l.sentences) || [];
     var re = new RegExp('\\b' + escapeRe(w.ms) + '\\b', 'i');
-    return list.filter(function (s) { return re.test(s.ms); })[0] || null;
+    return (l && l.sentences || []).filter(function (x) { return re.test(x.ms); })[0] || null;
   }
-  function highlight(text, word) {
-    var re = new RegExp('\\b(' + escapeRe(word) + ')\\b', 'i');
-    return text.replace(re, '<b>$1</b>');
-  }
+
   function renderLearn() {
-    var u = currentUnit();
-    if (!u) {
-      $('learn-word').textContent = '全部学完';
+    var u = sess.unit || currentUnit();
+    if (!u || !sess.list.length) {
+      $('learn-word').textContent = '已学完';
       $('learn-syl').textContent = '';
-      $('learn-zh').textContent = '去复习吧';
-      $('learn-note').textContent = '';
-      $('learn-count').textContent = '';
-      $('learn-img').hidden = true;
-      $('learn-next').disabled = true;
+      $('learn-example').hidden = true;
+      $('learn-reveal').hidden = true;
+      $('learn-actions').hidden = true;
+      $('learn-actions2').hidden = true;
       return;
     }
-    if (learnIdx >= u.words.length || learnIdx < 0) learnIdx = 0;
-    var w = u.words[learnIdx];
+    var w = sess.list[sess.idx];
     $('learn-title').textContent = '第 ' + u.week + ' 周 · ' + u.title;
-    $('learn-count').textContent = (learnIdx + 1) + ' / ' + u.words.length;
+    $('learn-count-txt').textContent = (sess.idx + 1) + ' / ' + sess.list.length;
     $('learn-word').textContent = w.ms;
-    $('learn-syl').textContent = w.syl;
-    $('learn-zh').textContent = w.zh + ' · ' + w.pos;
+    $('learn-syl').textContent = (w.syl || '').replace(/-/g, '·');
 
-    var imgEl = $('learn-img'), glyphEl = $('learn-glyph');
-    glyphEl.hidden = true;
-    $('learn-visual-note').hidden = true;
-    applyImage(imgEl, u.lessonId, w.ms, function () {
-      glyphEl.hidden = false;
-      glyphEl.textContent = glyphFor(w);
-      $('learn-visual-note').hidden = false;
-    });
-
-    var ex = exampleFor(u, w);
-    var exEl = $('learn-example');
+    var ex = exampleOf(u, w);
     if (ex) {
-      exEl.hidden = false;
-      exEl.innerHTML = highlight(ex.ms, w.ms) +
-        '<div class="muted" style="font-size:12px;margin-top:2px">' + ex.zh + '</div>';
+      $('learn-example').hidden = false;
+      $('learn-example').innerHTML = highlight(ex.ms, w.ms) +
+        '<div class="muted small">' + ex.zh + '</div>';
     } else {
-      exEl.hidden = true;
-      exEl.innerHTML = '';
+      $('learn-example').hidden = true;
     }
 
-    $('learn-note').textContent = w.note || '';
-    $('learn-src').textContent = '[出处：' + u.file + ' p.' + w.page + ']';
-
-    $('learn-next').disabled = false;
-    $('learn-next').textContent = learnIdx === u.words.length - 1 ? '完成本单元' : '下一个';
-    $('learn-prev').disabled = learnIdx === 0;
+    $('learn-reveal').hidden = true;
+    $('learn-actions').hidden = false;
+    $('learn-actions2').hidden = true;
   }
-  function completeUnit() {
-    var u = currentUnit();
-    if (!u) return;
-    u.words.forEach(function (v) {
-      var k = u.lessonId + '::' + v.ms;
-      if (!S.srs[k]) S.srs[k] = { stage: 0, due: todayStr() };
-    });
-    S.progress.unitIndex++;
-    S.progress.learnIdx = 0;
+
+  function gradeSession(w, known) {
+    var u = sess.unit || currentUnit();
+    var k = u.lessonId + '::' + w.ms;
+    var c = S.srs[k] || { stage: 0, due: todayStr() };
+    if (known) {
+      c.stage = Math.min(8, (c.stage || 0) + 1);
+      c.due = addDays(todayStr(), intervalFor(c.stage));
+    } else {
+      c.stage = 0;
+      c.due = todayStr();
+    }
+    c.last = todayStr();
+    S.srs[k] = c;
+    logActivity(known);
     save();
-    toast('「' + u.title + '」完成，已加入今日复习');
-    show('home');
+  }
+
+  function learnAnswer(known) {
+    var w = sess.list[sess.idx];
+    var u = sess.unit || currentUnit();
+    gradeSession(w, known);
+    var ex = exampleOf(u, w);
+    $('learn-pos').textContent = w.pos;
+    $('learn-zh').textContent = w.zh;
+    $('learn-example-zh').textContent = ex ? ex.zh : '';
+    $('learn-note').textContent = w.note || '';
+    $('learn-src').textContent = '出处：' + u.file + ' p.' + w.page;
+    $('learn-reveal').hidden = false;
+    $('learn-actions').hidden = true;
+    $('learn-actions2').hidden = false;
+  }
+
+  function learnNext() {
+    sess.idx++;
+    if (sess.idx >= sess.list.length) {
+      S.progress.unitIndex++;
+      S.progress.learnIdx = 0;
+      save();
+      toast('本单元完成');
+      show('home');
+      return;
+    }
+    renderLearn();
   }
 
   /* ---------------- SRS · 艾宾浩斯 ---------------- */
@@ -1284,24 +1286,26 @@
     $('auth-logout').addEventListener('click', logout);
     $('auth-email').addEventListener('keydown', function (e) { if (e.key === 'Enter') sendLogin(); });
     $('auth-modal').addEventListener('click', function (e) { if (e.target === $('auth-modal')) closeAuth(); });
-    $('btn-learn').addEventListener('click', showLearn);
+    $('btn-learn').addEventListener('click', startLearn);
     $('btn-review').addEventListener('click', function () { show('vocab'); });
+    $('checkin').addEventListener('click', function () {
+      var t = todayStr();
+      if (S.lastCheckin === t) { toast('今天已经签到'); return; }
+      S.lastCheckin = t;
+      save();
+      toast('签到成功');
+      renderHome();
+    });
     $('learn-back').addEventListener('click', function () { show('home'); });
 
-    $('learn-next').addEventListener('click', function () {
-      var u = currentUnit();
-      if (!u) return;
-      if (learnIdx >= u.words.length - 1) completeUnit();
-      else { learnIdx++; S.progress.learnIdx = learnIdx; save(); renderLearn(); }
-    });
-    $('learn-prev').addEventListener('click', function () {
-      if (learnIdx > 0) { learnIdx--; S.progress.learnIdx = learnIdx; save(); renderLearn(); }
-    });
+    $('learn-unknown').addEventListener('click', function () { learnAnswer(false); });
+    $('learn-known').addEventListener('click', function () { learnAnswer(true); });
+    $('learn-next').addEventListener('click', learnNext);
+    $('learn-again').addEventListener('click', function () { gradeSession(sess.list[sess.idx], false); learnNext(); });
     $('learn-audio').addEventListener('click', function () {
-      var u = currentUnit();
-      if (!u) return;
-      var w = u.words[learnIdx];
-      playAudio(vocabAudio(u.lessonId, w.ms), w.ms);
+      var w = sess.list[sess.idx];
+      var u = sess.unit;
+      if (w && u) playAudio(vocabAudio(u.lessonId, w.ms), w.ms);
     });
 
     $('rate').addEventListener('input', function (e) {
@@ -1431,7 +1435,7 @@
       renderHome();
       $('countdown').innerHTML = '距考试 <b>' + daysToExam() + '</b> 天';
     } else {
-      if (S.lastView === 'learn' && currentUnit()) showLearn();
+      if (S.lastView === 'learn' && currentUnit()) startLearn();
       else show('home');
     }
   }
