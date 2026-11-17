@@ -232,5 +232,18 @@ window.WORD_EXTRA.sentImg = {
   "u02-s1": "img/sent/u02-s1.jpg",
   "u03-s2": "img/sent/u03-s2.jpg",
   "u03-s3": "img/sent/u03-s3.jpg",
-  "u03-s6": "img/sent/u03-s6.jpg"
+  "u03-s6": "img/sent/u03-s6.jpg",
+  "u03-s1": "img/sent/u03-s1.jpg",
+  "u03-s4": "img/sent/u03-s4.jpg",
+  "u03-s5": "img/sent/u03-s5.jpg",
+  "u03-s7": "img/sent/u03-s7.jpg",
+  "u04-s1": "img/sent/u04-s1.jpg",
+  "u04-s2": "img/sent/u04-s2.jpg",
+  "u04-s3": "img/sent/u04-s3.jpg",
+  "u05-s1": "img/sent/u05-s1.jpg",
+  "u05-s2": "img/sent/u05-s2.jpg",
+  "u06-s1": "img/sent/u06-s1.jpg",
+  "u06-s2": "img/sent/u06-s2.jpg",
+  "u06-s3": "img/sent/u06-s3.jpg",
+  "u06-s4": "img/sent/u06-s4.jpg"
 };
