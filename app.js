@@ -357,7 +357,7 @@
   }
 
   /* ---------------- navigation ---------------- */
-  var VIEWS = ['home', 'course', 'learn', 'vocab', 'me', 'dictation', 'sentence', 'speak'];
+  var VIEWS = ['home', 'course', 'learn', 'vocab', 'me', 'quiz', 'dictation', 'sentence', 'speak'];
   var currentView = 'home';
   function show(name) {
     currentView = name;
@@ -374,6 +374,11 @@
     if (name === 'home') renderHome();
     if (name === 'course') renderCourse();
     if (name === 'me') renderMe();
+    if (name === 'quiz') {
+      $('quiz-setup').hidden = false;
+      $('quiz-play').hidden = true;
+      $('quiz-done').hidden = true;
+    }
     if (name === 'learn') renderLearn();
     if (name === 'vocab') { buildQueue(); nextCard(); }
     if (name === 'sentence') newSentence();
@@ -622,6 +627,157 @@
       return;
     }
     renderLearn();
+  }
+
+  /* ---------------- 测验 ---------------- */
+  var quiz = { mode: 'listen', list: [], idx: 0, correct: 0, locked: false };
+  var QUIZ_LABEL = { listen: '听力', read: '词汇翻译', zh: '中译马', spell: '拼写', sentence: '造句' };
+
+  function allVocabWithLesson() {
+    var out = [];
+    COURSE.lessons.forEach(function (l) {
+      (l.vocab || []).forEach(function (v) {
+        out.push({ ms: v.ms, zh: v.zh, pos: v.pos, syl: v.syl, page: v.page, lessonId: l.id });
+      });
+    });
+    return out;
+  }
+
+  function gradeKey(w, ok) {
+    var k = w.lessonId + '::' + w.ms;
+    var c = S.srs[k] || { stage: 0, due: todayStr() };
+    if (ok) {
+      c.stage = Math.min(8, (c.stage || 0) + 1);
+      c.due = addDays(todayStr(), intervalFor(c.stage));
+    } else {
+      c.stage = 0;
+      c.due = todayStr();
+    }
+    c.last = todayStr();
+    S.srs[k] = c;
+    logActivity(ok);
+    save();
+  }
+
+  function makeQuizQ(w, mode, pool) {
+    var others = shuffle(pool.filter(function (x) { return x.ms !== w.ms; })).slice(0, 3);
+    var opts = [w.ms].concat(others.map(function (x) { return x.ms; }));
+    if (mode !== 'zh') opts = [w.zh].concat(others.map(function (x) { return x.zh; }));
+    var uniq = [];
+    opts.forEach(function (o) { if (o && uniq.indexOf(o) < 0) uniq.push(o); });
+    return { w: w, options: shuffle(uniq), answer: mode === 'zh' ? w.ms : w.zh };
+  }
+
+  function quizPool() {
+    var upTo = Math.min(S.progress.unitIndex, UNITS.length - 1);
+    var out = [];
+    for (var i = 0; i <= upTo; i++) {
+      var u = UNITS[i];
+      if (!u) continue;
+      u.words.forEach(function (v) {
+        out.push({ ms: v.ms, zh: v.zh, pos: v.pos, syl: v.syl, page: v.page, lessonId: u.lessonId });
+      });
+    }
+    if (out.length < 8) out = allVocabWithLesson();
+    return out;
+  }
+
+  function startQuiz(mode) {
+    if (mode === 'sentence') { show('sentence'); return; }
+    quiz = { mode: mode, list: [], idx: 0, correct: 0, locked: false };
+    var pool = quizPool();
+    var picks = shuffle(pool).slice(0, 10);
+    quiz.list = picks.map(function (w) { return makeQuizQ(w, mode, pool); });
+    $('quiz-setup').hidden = true;
+    $('quiz-done').hidden = true;
+    $('quiz-play').hidden = false;
+    renderQuiz();
+  }
+
+  function playQuizAudio(q) {
+    playAudio(vocabAudio(q.w.lessonId, q.w.ms), q.w.ms);
+  }
+
+  function renderQuiz() {
+    var q = quiz.list[quiz.idx];
+    if (!q) return;
+    quiz.locked = false;
+    $('quiz-progress').textContent = (quiz.idx + 1) + ' / ' + quiz.list.length;
+    $('quiz-feedback').textContent = '';
+    $('quiz-feedback').className = 'dict-feedback';
+    $('quiz-next').hidden = true;
+    var input = $('quiz-input');
+    var audio = $('quiz-audio');
+    var opts = $('quiz-options');
+    input.hidden = true;
+    input.value = '';
+    $('quiz-check').hidden = true;
+    audio.hidden = true;
+    opts.innerHTML = '';
+
+    if (quiz.mode === 'spell') {
+      $('quiz-prompt').textContent = '听发音，写出单词';
+      audio.hidden = false;
+      input.hidden = false;
+      input.disabled = false;
+      $('quiz-check').hidden = false;
+      input.focus();
+      playQuizAudio(q);
+      return;
+    }
+    if (quiz.mode === 'listen') {
+      $('quiz-prompt').textContent = '听发音，选出中文';
+      audio.hidden = false;
+      playQuizAudio(q);
+    } else if (quiz.mode === 'read') {
+      $('quiz-prompt').textContent = q.w.ms;
+    } else {
+      $('quiz-prompt').textContent = q.w.zh;
+    }
+    q.options.forEach(function (o) {
+      var b = document.createElement('button');
+      b.className = 'quiz-opt';
+      b.textContent = o;
+      b.addEventListener('click', function () { answerQuiz(o, false); });
+      opts.appendChild(b);
+    });
+  }
+
+  function answerQuiz(val, isSpell) {
+    if (quiz.locked) return;
+    var q = quiz.list[quiz.idx];
+    if (!q) return;
+    var ok = isSpell ? normLoose(val) === normLoose(q.w.ms) : val === q.answer;
+    quiz.locked = true;
+    if (ok) quiz.correct++;
+    gradeKey(q.w, ok);
+
+    if (isSpell) {
+      $('quiz-input').disabled = true;
+    } else {
+      document.querySelectorAll('.quiz-opt').forEach(function (b) {
+        if (b.textContent === q.answer) b.classList.add('ok');
+        else if (b.textContent === val) b.classList.add('bad');
+        b.disabled = true;
+      });
+    }
+    var fb = $('quiz-feedback');
+    fb.textContent = (ok ? '✓ 正确' : '✗ 正确答案：' + q.answer) + '（' + q.w.ms + ' ' + q.w.zh + '）';
+    fb.className = 'dict-feedback ' + (ok ? 'ok' : 'bad');
+    $('quiz-next').hidden = false;
+  }
+
+  function nextQuiz() {
+    quiz.idx++;
+    if (quiz.idx >= quiz.list.length) {
+      $('quiz-play').hidden = true;
+      $('quiz-done').hidden = false;
+      $('quiz-result').textContent = '共 ' + quiz.list.length + ' 题，答对 ' + quiz.correct + ' 题（' +
+        Math.round(quiz.correct / quiz.list.length * 100) + '%）';
+      return;
+    }
+    $('quiz-input').disabled = false;
+    renderQuiz();
   }
 
   /* ---------------- SRS · 艾宾浩斯 ---------------- */
@@ -1325,6 +1481,20 @@
     $('auth-modal').addEventListener('click', function (e) { if (e.target === $('auth-modal')) closeAuth(); });
     $('btn-learn').addEventListener('click', startLearn);
     $('btn-review').addEventListener('click', function () { show('vocab'); });
+    document.querySelectorAll('.quiz-mode').forEach(function (b) {
+      b.addEventListener('click', function () { startQuiz(b.dataset.mode); });
+    });
+    $('quiz-audio').addEventListener('click', function () {
+      var q = quiz.list[quiz.idx];
+      if (q) playQuizAudio(q);
+    });
+    $('quiz-next').addEventListener('click', nextQuiz);
+    $('quiz-check').addEventListener('click', function () { answerQuiz($('quiz-input').value, true); });
+    $('quiz-again').addEventListener('click', function () { startQuiz(quiz.mode); });
+    $('quiz-back').addEventListener('click', function () { show('me'); });
+    $('quiz-input').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && quiz.list[quiz.idx]) answerQuiz($('quiz-input').value, true);
+    });
     $('checkin').addEventListener('click', function () {
       var t = todayStr();
       if (S.lastCheckin === t) { toast('今天已经签到'); return; }

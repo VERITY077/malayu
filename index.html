@@ -119,6 +119,7 @@
     <div class="card">
       <div class="card-title">考试专项</div>
       <div class="tool-list">
+        <button class="tool-row" data-go="quiz"><span>测验</span><small>听力 · 翻译 · 拼写 · 造句</small></button>
         <button class="tool-row" data-go="dictation"><span>听写</span><small>数字 · 货币 · 时间 · 场景</small></button>
         <button class="tool-row" data-go="sentence"><span>造句</span><small>词序重组 + 逐词解析</small></button>
         <button class="tool-row" data-go="speak"><span>口语</span><small>跟读评测</small></button>
@@ -141,6 +142,42 @@
         <button class="btn ghost small" id="btn-reset">重置学习数据</button>
       </div>
       <p class="muted small">进度保存在本浏览器；登录后同步到云端。</p>
+    </div>
+  </section>
+
+  <!-- 测验 -->
+  <section class="view" id="view-quiz">
+    <div class="learn-top">
+      <button class="icon-btn" data-go="me">‹</button>
+      <div class="learn-progress" id="quiz-progress">1 / 10</div>
+      <span></span>
+    </div>
+    <h2 class="page-title">测验</h2>
+    <p class="muted mb">按考试题型练：听力、翻译、拼写、造句。</p>
+
+    <div class="quiz-setup" id="quiz-setup">
+      <button class="quiz-mode" data-mode="listen"><b>听力</b><small>听发音选中文</small></button>
+      <button class="quiz-mode" data-mode="read"><b>词汇翻译</b><small>看马来语选中文</small></button>
+      <button class="quiz-mode" data-mode="zh"><b>中译马</b><small>看中文选马来语</small></button>
+      <button class="quiz-mode" data-mode="spell"><b>拼写</b><small>听发音写单词</small></button>
+      <button class="quiz-mode" data-mode="sentence"><b>造句</b><small>词序重组</small></button>
+    </div>
+
+    <div class="card quiz-play" id="quiz-play" hidden>
+      <div class="quiz-prompt" id="quiz-prompt">—</div>
+      <button class="btn audio-big" id="quiz-audio" hidden>🔊 再听一遍</button>
+      <input class="input" id="quiz-input" hidden placeholder="输入答案" autocomplete="off" autocapitalize="off">
+      <button class="btn primary mt" id="quiz-check" hidden>提交</button>
+      <div class="quiz-options" id="quiz-options"></div>
+      <div class="dict-feedback" id="quiz-feedback"></div>
+      <button class="btn primary mt" id="quiz-next" hidden>下一题</button>
+    </div>
+
+    <div class="card" id="quiz-done" hidden>
+      <div class="card-title">完成</div>
+      <p id="quiz-result"></p>
+      <button class="btn primary" id="quiz-again">再来一组</button>
+      <button class="btn ghost" id="quiz-back">返回</button>
     </div>
   </section>
 
